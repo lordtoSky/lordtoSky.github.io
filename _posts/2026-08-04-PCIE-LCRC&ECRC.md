@@ -36,9 +36,13 @@ LCRC 之所以必须逐跳重算，并不是因为 Switch 一定会修改 TLP �
 前面的 Sequence Number、LCRC、ACK/NAK 和 Replay 描述适用于传统 **Non-FLIT Mode**。PCIe 1.0 至 5.0 的 LCRC 核心机制基本一致；真正的结构性变化发生在 PCIe 6.0 引入 FLIT Mode 之后：
 
 | PCIe 版本 | 链路封装与校验单位 | 错误恢复机制 | 核心变化 |
-| --- | --- | --- | --- |
-| 1.0 / 1.1 / 2.0 | 单个 TLP，携带 32-bit LCRC 与 Sequence Number | 按 TLP ACK/NAK、Replay | 建立传统逐 TLP 的链路层可靠性模型。 |
-| 3.0 / 4.0 / 5.0 | 仍是单个 TLP 的 32-bit LCRC 与 Sequence Number | 按 TLP ACK/NAK、Replay | 速率与 PHY 编码演进，但 LCRC 的逐跳语义不变。PCIe 3.0 改用 128b/130b 编码，并未改变 LCRC 的基本职责。 |
+| :---: | :---: | :---: | :---: |
+| 1.0 | 单个 TLP，携带 32-bit LCRC 与 Sequence Number | 按 TLP ACK/NAK、Replay | 建立传统逐 TLP 的链路层可靠性模型。 |
+| 1.1 | 单个 TLP，携带 32-bit LCRC 与 Sequence Number | 按 TLP ACK/NAK、Replay | 延续 PCIe 1.0 的链路层机制。 |
+| 2.0 | 单个 TLP，携带 32-bit LCRC 与 Sequence Number | 按 TLP ACK/NAK、Replay | 提升链路速率，LCRC 机制不变。 |
+| 3.0 | 单个 TLP，携带 32-bit LCRC 与 Sequence Number | 按 TLP ACK/NAK、Replay | 改用 128b/130b 编码，LCRC 的逐跳语义不变。 |
+| 4.0 | 单个 TLP，携带 32-bit LCRC 与 Sequence Number | 按 TLP ACK/NAK、Replay | 提升链路速率，LCRC 机制不变。 |
+| 5.0 | 单个 TLP，携带 32-bit LCRC 与 Sequence Number | 按 TLP ACK/NAK、Replay | 提升链路速率，LCRC 机制不变。 |
 | 6.0 | 固定 256B FLIT；FLIT 含 8B（64-bit）CRC | 按 FLIT NAK、Replay，并先进行 FEC 纠错 | 引入 PAM4、FLIT Mode 和 3-way interleaved FEC；TLP/DLLP 不再各自携带传统 CRC 字节。 |
 | 7.0 | 延续 256B FLIT 与 8B（64-bit）CRC | 按 FLIT NAK、Replay，并配合 FEC | 延续 PCIe 6.0 的 FLIT Mode 可靠性模型，提升到 128 GT/s。 |
 
@@ -81,11 +85,18 @@ ECRC 的核心目的是让最终接收端检测 TLP 是否在端到端传输中�
 ECRC 的实现能力始终是可选的；后续版本并没有要求所有 PCIe 设备必须实现 ECRC。变化主要体现在 PCIe 2.1 对已支持、已启用 ECRC 的行为提出了更明确的统一要求，以及 PCIe 6.0 对 Non-FLIT 与 FLIT Mode 的区分：
 
 | PCIe 版本或模式 | ECRC 规则 | 关键影响 |
-| --- | --- | --- |
-| 1.0 / 1.1 / 2.0 | ECRC 是可选的事务层能力，以 TD bit 和 TLP Digest 表示。 | 系统可以只依赖逐跳 LCRC。 |
-| 2.1 至 5.0 | ECRC 仍是可选能力；但 Function 一旦启用 ECRC 生成，就必须对该 Function 发出的所有 TLP 应用 ECRC；启用检查后，必须检查所有目标为该设备且携带 ECRC 的 TLP。 | 避免设备只对部分 TLP 类型生成或检查 ECRC。 |
-| 6.0 / 7.0 的 Non-FLIT Mode | 延续传统 TD bit 和 TLP Digest 的 ECRC 规则。 | 本文后续关于 Digest、字段覆盖和最终接收端检查的说明适用于此模式。 |
-| 6.0 / 7.0 的 FLIT Mode | TLP Digest/ECRC 规则被定义为 Non-FLIT Mode Only，不使用传统 TLP Digest ECRC。 | FLIT CRC 与 FEC 提供 FLIT 级链路可靠性，但不能把 FLIT CRC 直接当作传统 ECRC。 |
+| :---: | :---: | :---: |
+| 1.0 | ECRC 是可选的事务层能力，以 TD bit 和 TLP Digest 表示。 | 系统可以只依赖逐跳 LCRC。 |
+| 1.1 | ECRC 是可选的事务层能力，以 TD bit 和 TLP Digest 表示。 | 延续 PCIe 1.0 的 ECRC 规则。 |
+| 2.0 | ECRC 是可选的事务层能力，以 TD bit 和 TLP Digest 表示。 | 延续 PCIe 1.1 的 ECRC 规则。 |
+| 2.1 | ECRC 仍是可选能力；启用生成后，必须对该 Function 发出的所有 TLP 应用 ECRC；启用检查后，必须检查所有目标为该设备且携带 ECRC 的 TLP。 | 避免设备只对部分 TLP 类型生成或检查 ECRC。 |
+| 3.0 | 延续 PCIe 2.1 的 ECRC 可选性与启用后规则。 | ECRC 规则不因 128b/130b 编码而改变。 |
+| 4.0 | 延续 PCIe 2.1 的 ECRC 可选性与启用后规则。 | ECRC 规则保持不变。 |
+| 5.0 | 延续 PCIe 2.1 的 ECRC 可选性与启用后规则。 | ECRC 规则保持不变。 |
+| 6.0 Non-FLIT Mode | 延续传统 TD bit 和 TLP Digest 的 ECRC 规则。 | 本文关于 Digest、字段覆盖和最终接收端检查的说明适用于此模式。 |
+| 6.0 FLIT Mode | TLP Digest/ECRC 规则被定义为 Non-FLIT Mode Only，不使用传统 TLP Digest ECRC。 | FLIT CRC 与 FEC 提供 FLIT 级链路可靠性，但不能把 FLIT CRC 直接当作传统 ECRC。 |
+| 7.0 Non-FLIT Mode | 延续传统 TD bit 和 TLP Digest 的 ECRC 规则。 | 与 PCIe 6.0 Non-FLIT Mode 的 ECRC 规则一致。 |
+| 7.0 FLIT Mode | 不使用传统 TLP Digest ECRC。 | 延续 PCIe 6.0 的 FLIT CRC 与 FEC 机制。 |
 
 换言之，PCIe 6.0/7.0 的 **FLIT CRC 不是 ECRC 的同名替代品**：前者按 FLIT 保护每一跳链路，后者是 Non-FLIT Mode 中按 TLP 携带的端到端校验。对于需要端到端安全属性的场景，还应结合 PCIe IDE 等机制评估。
 
