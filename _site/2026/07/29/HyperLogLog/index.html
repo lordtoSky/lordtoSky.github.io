@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+  <link href="http://gmpg.org/xfn/11" rel="profile">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+  <link rel="stylesheet" href="/assets/css/normalize.css"/>
+  <link rel="stylesheet" href="/assets/css/bulma.css"/>
+  <link rel="stylesheet" href="/assets/css/custom.css"/>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans|Roboto" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/syntax.css" type="text/css">
+
+  <!-- Icons -->
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+
+  <!-- RSS -->
+  <link rel="alternate" type="application/rss+xml" title="RSS" href="/atom.xml">
+  <link rel="alternate" type="application/rss+xml" title="RSS" href="/atom.xml">
+
+  <title>
+    
+      HyperLogLog Algorithm &middot; Soot Spirits
+    
+  </title>
+
+
+<script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']]
+    }
+  };
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+</head>
+
+
+<body>
+
+<section class="hero is-dark">
+  <div class="hero-body">
+    <div class="container">
+        <h1 class="title">
+          <span class="typewrite" data-period="2000" data-type='[ "hello", "namaste", "assalam o alaikum",
+          "sat srī akāl", "khammaghani", "hola", "bonjour", "nomoskaar", "guten tag", "kumusta", "salut", "nômoshkar"]'>
+            <span class="wrap"></span>
+          </span>
+        </h1>
+      <h4 class="subtitle" id="quote">
+      </h4>
+    </div>
+  </div>
+</section>
+
+<div class="main-container">
+  <div class="tile is-ancestor is-vertical">
+
+
+    <nav class="nav has-shadow">
+
+      <div class="nav-left">
+
+        <a href="/" class="nav-item">
+          <span class="icon">
+            <i class="fa fa-home" aria-hidden="true" title="Homepage"></i>
+          </span>
+        </a>
+
+        <a href="https://github.com/abhn" class="nav-item">
+          <span class="icon">
+            <i class="fa fa-github" aria-hidden="true" title="Github"></i>
+          </span>
+        </a>
+
+        <div class="nav-item" id="searchFieldNav">
+          <div class="field has-addons">
+            <p class="control">
+              <input class="input is-small" type="text" placeholder="Find an article" id="search-text">
+            </p>
+            <p class="control">
+              <a class="button is-dark is-small" onclick="searchHandler();">
+                Search
+              </a>
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="nav-right nav-menu" id='nav-menu'>
+        <a href="/archive" class="nav-item">Archive</a>
+        <a href="/tags" class="nav-item">Tags</a>
+      </div>
+
+      <span class="nav-toggle" id="nav-toggle">
+          <span></span>
+          <span></span>
+          <span></span>
+    </nav>
+
+    <div class="tile is-parent">
+      <div class="tile is-8 is-child main">
+
+        <div class="box">
+    <h1 class="post-title">HyperLogLog Algorithm</h1>
+    <span class="post-meta">29 July, 2026. It was a Wednesday. <a style="color:grey" href="#disqus_thread"></a></span><hr/>
+
+    <span class="post-text"><h1 id="hyperloglog-algorithm">HyperLogLog Algorithm</h1>
+<h2 id="1-hll是什么">1. HLL是什么</h2>
+<p>一种用于估算集合中“不重复元素数量”的<strong>概率算法</strong>，因为其为概率算法，因此存在误差，更适合对海量数据进行分析。</p>
+<h2 id="2-hll解决了什么">2. HLL解决了什么</h2>
+<p>对于数据处理来说，当前数据中有多少<strong>不重复元素</strong>是一个很重要的参数。
+常规处理方式很简单粗暴：</p>
+
+<ul>
+  <li>每新进来一个元素，查找已有元素</li>
+  <li>如果查找命中，那么不重复元素数量不变</li>
+  <li>如果查找未命中，那么数量++</li>
+</ul>
+
+<p>这一方式在数据量小的时候可以作为解决方案，但随着数据量增加，查找效率快速下降，所需的存储空间也在增加，因此需要一种新的思路来解决海量数据中不重复元素的数量计算。
+因此，HLL主要解决的就是海量数据场景下，如何高效可靠的计算现有数据中的不重复数据数量。</p>
+<h2 id="3-hll如何解决的">3. HLL如何解决的</h2>
+<p>HLL的核心在于概率。一个硬币正面反面理论上出现的概率相同，但在实际中并不是五五开，<del>可以确定的是如果全是正面基本上等于作弊</del>。
+对于任意一个数据来说，他都可以转换为一串二进制数，对于均匀二进制数而言，高位出现连续0（前导0）的概率很小。对于<code class="language-plaintext highlighter-rouge">m</code>位二进制数，MSB为连续<code class="language-plaintext highlighter-rouge">n</code>位0的概率为：
+\(P=2^{m-n}/2^m=1/2^{n}\)
+对于一堆二进制数而言，最大前导0数量为<code class="language-plaintext highlighter-rouge">n</code>代表着堆大小大概率为$2^n$，这就是HLL通过罕见模式来估算整体不重复样本数量的方式。</p>
+<h2 id="4-hll的实现细节">4. HLL的实现细节</h2>
+
+<h3 id="41-初始化寄存器">4.1 初始化寄存器</h3>
+
+<p>HLL首先选择一个精度参数<code class="language-plaintext highlighter-rouge">p</code>，并创建<code class="language-plaintext highlighter-rouge">m=2^p</code>个寄存器：</p>
+
+\[m=2^p,\qquad M[0],M[1],\ldots,M[m-1]=0\]
+
+<p>每个寄存器只需要保存一个很小的整数，即对应分组中出现过的最大“秩”。<code class="language-plaintext highlighter-rouge">p</code>越大，寄存器越多，估算误差越小，但占用的内存也越多。</p>
+
+<h3 id="42-哈希与分桶">4.2 哈希与分桶</h3>
+
+<p>对于每个输入元素$x$，首先使用分布均匀的哈希函数生成一个$L$位哈希值：</p>
+
+\[h=\operatorname{Hash}(x)\]
+
+<p>通常取$L=64$。将哈希值分成两部分：</p>
+
+<ul>
+  <li>前<code class="language-plaintext highlighter-rouge">p</code>位用于确定寄存器编号$j$；</li>
+  <li>剩余$q=L-p$位记为$w$，用于统计前导0。</li>
+</ul>
+
+<p>因此桶编号为：</p>
+
+\[j=\operatorname{prefix}_p(h),\qquad 0\leq j&lt;m\]
+
+<p>使用哈希值而不是原始数据，是为了让不同输入尽可能均匀地落入各个桶中。哈希函数的分布质量会直接影响HLL的准确性。</p>
+
+<h3 id="43-计算前导0的秩">4.3 计算前导0的秩</h3>
+
+<p>定义$\rho(w)$为<code class="language-plaintext highlighter-rouge">w</code>中第一个1出现的位置，位置从1开始计算。它等价于前导0数量加1：</p>
+
+\[\rho(w)=\operatorname{leadingZeros}(w)+1\]
+
+<p>例如：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>二进制序列<code class="language-plaintext highlighter-rouge">w</code></th>
+      <th style="text-align: right">前导0数量</th>
+      <th style="text-align: right">$\rho(w)$</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">1...</code></td>
+      <td style="text-align: right">0</td>
+      <td style="text-align: right">1</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">01...</code></td>
+      <td style="text-align: right">1</td>
+      <td style="text-align: right">2</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">0001...</code></td>
+      <td style="text-align: right">3</td>
+      <td style="text-align: right">4</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>每次添加元素时，只保留对应寄存器观察到的最大值：</p>
+
+\[M[j]\leftarrow\max\left(M[j],\rho(w)\right)\]
+
+<p>因为前导$n$个二进制位全部为0的概率是$2^{-n}$，所以观察到越大的$\rho(w)$，通常意味着处理过的不同元素越多。</p>
+
+<h3 id="44-估算基数">4.4 估算基数</h3>
+
+<p>如果只使用所有寄存器的最大值或算术平均值，结果很容易被极端值影响。HLL对所有寄存器使用调和平均思想，先计算：</p>
+
+\[Z=\left(\sum_{j=0}^{m-1}2^{-M[j]}\right)^{-1}\]
+
+<p>然后得到原始基数估计值：</p>
+
+\[E=\alpha_m m^2 Z
+  =\alpha_m\frac{m^2}
+  {\displaystyle\sum_{j=0}^{m-1}2^{-M[j]}}\]
+
+<p>其中$\alpha_m$是用于修正系统偏差的常数：</p>
+
+\[\alpha_m=
+\begin{cases}
+0.673, &amp; m=16\\
+0.697, &amp; m=32\\
+0.709, &amp; m=64\\
+\dfrac{0.7213}{1+1.079/m}, &amp; m\geq128
+\end{cases}\]
+
+<h3 id="45-小基数修正">4.5 小基数修正</h3>
+
+<p>当数据量较小时，很多寄存器仍然为0，此时直接使用原始估计值会产生较大偏差。设值为0的寄存器数量为$V$：</p>
+
+\[V=\left|\left\{j\mid M[j]=0\right\}\right|\]
+
+<p>当$E\leq\frac{5}{2}m$且$V&gt;0$时，通常使用线性计数进行修正：</p>
+
+\[E_{\text{small}}=m\ln\left(\frac{m}{V}\right)\]
+
+<p>直观来说，空桶越少，说明出现过的不同元素越多。</p>
+
+<h3 id="46-大基数修正">4.6 大基数修正</h3>
+
+<p>哈希值的取值空间是有限的。当估算值逐渐接近$2^L$时，哈希碰撞会明显增加。经典HLL在$E&gt;\frac{2^L}{30}$时使用如下修正：</p>
+
+\[E_{\text{large}}
+=-2^L\ln\left(1-\frac{E}{2^L}\right)\]
+
+<p>使用64位哈希时，只有在极大的数据规模下才需要这一修正。现代实现（例如HLL++）通常还会使用实验得到的偏差表和稀疏表示进一步提高精度。</p>
+
+<h3 id="47-误差与内存">4.7 误差与内存</h3>
+
+<p>HLL的相对标准误差近似为：</p>
+
+\[\operatorname{RSE}\approx\frac{1.04}{\sqrt{m}}
+=\frac{1.04}{\sqrt{2^p}}\]
+
+<p>常见参数对应关系如下：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: right"><code class="language-plaintext highlighter-rouge">p</code></th>
+      <th style="text-align: right">寄存器数量$m$</th>
+      <th style="text-align: right">理论相对误差</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: right">10</td>
+      <td style="text-align: right">1,024</td>
+      <td style="text-align: right">约3.25%</td>
+    </tr>
+    <tr>
+      <td style="text-align: right">12</td>
+      <td style="text-align: right">4,096</td>
+      <td style="text-align: right">约1.63%</td>
+    </tr>
+    <tr>
+      <td style="text-align: right">14</td>
+      <td style="text-align: right">16,384</td>
+      <td style="text-align: right">约0.81%</td>
+    </tr>
+    <tr>
+      <td style="text-align: right">16</td>
+      <td style="text-align: right">65,536</td>
+      <td style="text-align: right">约0.41%</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>若每个寄存器使用6位，<code class="language-plaintext highlighter-rouge">p=14</code>时所需的核心存储空间约为：</p>
+
+\[16384\times6\ \text{bit}=98304\ \text{bit}=12\ \text{KiB}\]
+
+<p>无论输入一万个还是十亿个元素，寄存器数组的大小都不会随数据量增长。</p>
+
+<h3 id="48-添加元素的伪代码">4.8 添加元素的伪代码</h3>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>function add(value):
+    h = hash64(value)
+
+    j = h 的前 p 位
+    w = h 的剩余 64-p 位
+    rank = leadingZeros(w) + 1
+
+    M[j] = max(M[j], rank)
+</code></pre></div></div>
+
+<p>估算过程如下：</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>function count():
+    sum = 0
+    zeroCount = 0
+
+    for register in M:
+        sum += 2 ^ (-register)
+
+        if register == 0:
+            zeroCount += 1
+
+    estimate = alpha(m) * m * m / sum
+
+    if estimate &lt;= 2.5 * m and zeroCount &gt; 0:
+        estimate = m * ln(m / zeroCount)
+
+    return round(estimate)
+</code></pre></div></div>
+
+<h3 id="49-合并多个hll">4.9 合并多个HLL</h3>
+
+<p>HLL非常适合分布式计算。只要两个HLL使用相同的<code class="language-plaintext highlighter-rouge">p</code>和哈希函数，就可以对每个寄存器取最大值来计算集合的并集：</p>
+
+\[M_{A\cup B}[j]=\max\left(M_A[j],M_B[j]\right)\]
+
+<p>该操作不需要读取原始数据，合并后的误差和单个同精度HLL处于相同量级。例如，可以分别统计不同服务器上的独立用户，再将各服务器的HLL合并成全站独立用户估计值。</p>
+
+<h2 id="5-总结">5. 总结</h2>
+
+<p>HLL使用哈希值中的罕见前导0模式推测数据规模，并通过分桶降低单次随机事件带来的波动。其主要特点是：</p>
+
+<ul>
+  <li>内存占用固定且很小；</li>
+  <li>添加元素和合并操作都很快；</li>
+  <li>适合分布式海量数据的去重计数；</li>
+  <li>结果是估算值，不能返回具体元素，也不适合要求完全精确的场景。</li>
+</ul>
+
+<p>HLL本质上是在准确度和空间开销之间做出的工程权衡：它放弃少量精度，换取了数量级上的内存节省。</p>
+</span>
+    <br>
+<div class="pagination">
+  
+  <a class="pagination-previous" href="/2018/04/29/markdown-test/" data-toggle="tooltip" data-placement="top" title="Markdown Test"><span class=""></span> Markdown Test</a>
+  
+  
+  <a class="pagination-next" href="/2026/08/02/echo-archive-card-design/" data-toggle="tooltip" data-placement="top" title="捣蛋档案馆">捣蛋档案馆 <span class=""></span></a>
+  
+</div>
+
+</div>
+
+<!--<div class="box">-->
+    <!-- google ads code box -->
+<!--</div>-->
+
+
+
+
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    
+    
+    var disqus_shortname = 'nagekar'; // required: replace example with your forum shortname
+    
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+
+
+
+
+
+      </div>
+
+      <div class="tile is-4 is-child">
+        <div class="tile is-parent is-vertical sidebar">
+
+          <div class="tile is-child widget">
+
+            <div class="card">
+              <header class="card-header">
+                <p class="card-header-title nice-title">
+                  Recent Posts
+                </p>
+              </header>
+              <div class="card-content">
+                <div class="content nice-text">
+                  <ul>
+                  
+                  <li><a href="/2026/08/04/PCIE-LCRC&ECRC/">
+                    PCIe 中 LCRC 与 ECRC 的区别
+                  </a></li>
+                  
+                  <li><a href="/2026/08/03/excile/">
+                    放逐者
+                  </a></li>
+                  
+                  <li><a href="/2026/08/02/echo-archive-card-design/">
+                    捣蛋档案馆
+                  </a></li>
+                  
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tile is-child widget">
+
+            <div class="card">
+              <header class="card-header">
+                <p class="card-header-title nice-title">
+                  Sponsored
+                </p>
+              </header>
+              <div class="card-content">
+                <div class="content nice-text">
+                  <img src="/assets/images/Dust_Bunny.jpg"/>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="tile is-child widget">
+            <div class="card">
+              <header class="card-header">
+                <p class="card-header-title nice-title">
+                  Recommended Websites
+                </p>
+              </header>
+              <div class="card-content">
+                <div class="content nice-text">
+                  <ul>
+                    <li>
+                      <a href="https://xkcd.com">xkcd</a>
+                    </li>
+                    <li>
+                      <a href="http://commitstrip.com">Commit Strip</a>
+                    </li>
+                    <li>
+                      <a href="http://www.smbc-comics.com">SMBC Comics</a>
+                    </li>
+                    <li>
+                      <a href="https://blog.codinghorror.com">Coding Horror</a>
+                    </li>
+                    <li>
+                      <a href="http://waitbutwhy.com">Wait Buy Why</a>
+                    </li>
+                    <li>
+                      <a href="https://simplysoch.wordpress.com/">Simply Soch</a>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <div class="content has-text-centered">
+      <p>
+        Some rights reserved.
+      </p>
+      <p>
+        Made with <i class="fa fa-heart"></i> and <a href="https://github.com/jgthms/bulma">Bulma</a>, <a href="https://jekyllrb.com/">Jekyll</a>. Hosted on <a href="https://github.com/">Github</a>
+      </p>
+      <p>
+        <a class="icon" href="https://github.com/abhn">
+          <i class="fa fa-github" title="Github"></i>
+        </a>
+        <a class="icon" href="https://in.linkedin.com/in/AbhishekNagekar">
+          <i class="fa fa-linkedin" title="Linkedin"></i>
+        </a>
+        <a class="icon" href="mailto:abhishek@nagekar.com">
+          <i class="fa fa-envelope" title="Email"></i>
+        </a>
+      </p>
+    </div>
+  </div>
+</footer>
+
+<!-- js -->
+<script src="/assets/js/custom.js"></script>
+<script src="/assets/js/typewriter.js"></script>
+</body>
+</html>

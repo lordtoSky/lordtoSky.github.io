@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+  <link href="http://gmpg.org/xfn/11" rel="profile">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+  <link rel="stylesheet" href="/assets/css/normalize.css"/>
+  <link rel="stylesheet" href="/assets/css/bulma.css"/>
+  <link rel="stylesheet" href="/assets/css/custom.css"/>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans|Roboto" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/syntax.css" type="text/css">
+
+  <!-- Icons -->
+  <link rel="shortcut icon" href="/assets/images/favicon.ico">
+
+  <!-- RSS -->
+  <link rel="alternate" type="application/rss+xml" title="RSS" href="/atom.xml">
+  <link rel="alternate" type="application/rss+xml" title="RSS" href="/atom.xml">
+
+  <title>
+    
+      PCIe 中 LCRC 与 ECRC 的区别 &middot; Soot Spirits
+    
+  </title>
+
+
+</head>
+
+
+<body>
+
+<section class="hero is-dark">
+  <div class="hero-body">
+    <div class="container">
+        <h1 class="title">
+          <span class="typewrite" data-period="2000" data-type='[ "hello", "namaste", "assalam o alaikum",
+          "sat srī akāl", "khammaghani", "hola", "bonjour", "nomoskaar", "guten tag", "kumusta", "salut", "nômoshkar"]'>
+            <span class="wrap"></span>
+          </span>
+        </h1>
+      <h4 class="subtitle" id="quote">
+      </h4>
+    </div>
+  </div>
+</section>
+
+<div class="main-container">
+  <div class="tile is-ancestor is-vertical">
+
+
+    <nav class="nav has-shadow">
+
+      <div class="nav-left">
+
+        <a href="/" class="nav-item">
+          <span class="icon">
+            <i class="fa fa-home" aria-hidden="true" title="Homepage"></i>
+          </span>
+        </a>
+
+        <a href="https://github.com/abhn" class="nav-item">
+          <span class="icon">
+            <i class="fa fa-github" aria-hidden="true" title="Github"></i>
+          </span>
+        </a>
+
+        <div class="nav-item" id="searchFieldNav">
+          <div class="field has-addons">
+            <p class="control">
+              <input class="input is-small" type="text" placeholder="Find an article" id="search-text">
+            </p>
+            <p class="control">
+              <a class="button is-dark is-small" onclick="searchHandler();">
+                Search
+              </a>
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="nav-right nav-menu" id='nav-menu'>
+        <a href="/archive" class="nav-item">Archive</a>
+        <a href="/tags" class="nav-item">Tags</a>
+      </div>
+
+      <span class="nav-toggle" id="nav-toggle">
+          <span></span>
+          <span></span>
+          <span></span>
+    </nav>
+
+    <div class="tile is-parent">
+      <div class="tile is-8 is-child main">
+
+        <div class="box">
+    <h1 class="post-title">PCIe 中 LCRC 与 ECRC 的区别</h1>
+    <span class="post-meta">4 August, 2026. It was a Tuesday. <a style="color:grey" href="#disqus_thread"></a></span><hr/>
+
+    <span class="post-text"><h1 id="pcie-中-lcrc-与-ecrc-的区别">PCIe 中 LCRC 与 ECRC 的区别</h1>
+
+<p>PCIe 同时使用 LCRC（Link CRC）和 ECRC（End-to-End CRC），但两者不是重复校验同一件事：LCRC 负责<strong>逐跳链路的快速恢复</strong>，ECRC 负责<strong>源 Function 到最终接收 Function 的完整性检测</strong>。本文以传统 Non-FLIT Mode 的 TLP/DLLP 封装为例说明。</p>
+
+<h2 id="tlp-的传输模型">TLP 的传输模型</h2>
+
+<p>PCIe 采用由 Root Complex、Switch 和 Endpoint 组成的树状拓扑，相邻端口之间通过点对点 Link 连接。一份 TLP 从源 Function 到最终接收 Function 的过程属于<strong>端到端（End-to-End）传输</strong>；它可能经过一个或多个 Switch，因此一条端到端路径通常由多跳彼此独立的 Link 组成：</p>
+
+<p><img src="/assets/images/PCIE/pcie-tlp-switch-tree.png" alt="TLP在多级PCIe Switch树形拓扑中的传递路径" /></p>
+
+<p>在一次事务中，发起请求的 Function 称为 <strong>Requester</strong>，负责构造并发送 Request TLP；处理该请求的 Function 称为 <strong>Completer</strong>。Requester 和 Completer 描述的是事务角色，而不是固定的设备类型。例如，Root Complex 和 Endpoint 在不同事务中都可能成为 Requester 或 Completer。</p>
+
+<p>TLP Header 携带事务类型、长度、Requester ID、Tag，以及地址或目标 ID 等信息。Switch 需要读取这些路由相关字段，并根据 TLP 类型选择输出端口：Memory 和 I/O Request 通常采用地址路由，Configuration Request 和 Completion 通常采用 ID 路由，Message 可以采用隐式路由。Switch 只把 TLP 转发到匹配端口，而不是向所有分支广播。</p>
+
+<p>从传输过程看，每一跳都有独立的数据链路层状态和流量控制。以传统 Non-FLIT Mode 为例，接收端口先检查本跳的 Sequence Number 和 LCRC；校验成功后，TLP 才进入 Switch 的转发路径，并在下一条 Link 具备足够接收缓冲区 Credit 时继续发送。发送端口会为下一跳重新添加 Sequence Number 并计算 LCRC，因此同一个 TLP 经过多跳时，每一跳的链路层封装彼此独立。</p>
+
+<p>一个“事务”不一定只包含一个 TLP。Posted Request（例如 Memory Write）发送后通常不需要 Completion；Non-Posted Request（例如 Memory Read）则需要 Completer 返回 Completion，读取的数据还可能由多个 Completion with Data TLP 携带。因此，Request TLP 和对应的 Completion TLP 方向可以相反，但它们共同组成一次完整事务。</p>
+
+<p>Switch 通常不会处理普通 Memory 事务的 Payload，大部分事务层内容在转发过程中保持不变；不过，协议允许少数字段、TLP Prefix 或不同传输模式之间的 Header 在路由节点中发生合法处理。因此，不能把 TLP 理解为在所有节点间必然逐比特不变。总体上，LCRC 保护每一跳的传输，ECRC 则检查源 Function 到最终接收 Function 之间的端到端完整性。</p>
+
+<h2 id="lcrc逐跳链路校验与重传">LCRC：逐跳链路校验与重传</h2>
+
+<p>链路循环冗余校验（LCRC, Link Cyclic Redundancy Check）是 PCIe 数据链路层用于检测<strong>单跳</strong>传输错误的校验码。一跳指一对相邻 PCIe 端口之间的传输；一份 TLP 即使跨越多个 Switch，也会被拆成多段独立的单跳传输。</p>
+
+<p>LCRC 只在生成它的那条 Link 上有效。接收端发现 LCRC 错误时，会通过 ACK/NAK 和 Replay 机制要求发送端从 Retry Buffer 重传，因此错误能在出错 Link 附近被定位和恢复，而不用等到最终接收端才发现。</p>
+
+<p>LCRC 之所以必须逐跳重算，并不是因为 Switch 一定会修改 TLP 内容，而是因为每个 Switch 端口都会终结上一段数据链路：接收端口校验并移除上一跳的 Sequence Number 和 LCRC，发送端口再为下一跳生成新的 Sequence Number 和 LCRC。LCRC 还保护这些链路层封装，因此不能由 ECRC 取代。</p>
+
+<p>前面的 Sequence Number、LCRC、ACK/NAK 和 Replay 描述适用于传统 <strong>Non-FLIT Mode</strong>。PCIe 1.0 至 5.0 的 LCRC 核心机制基本一致；真正的结构性变化发生在 PCIe 6.0 引入 FLIT Mode 之后：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>PCIe 版本</th>
+      <th>链路封装与校验单位</th>
+      <th>错误恢复机制</th>
+      <th>核心变化</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1.0 / 1.1 / 2.0</td>
+      <td>单个 TLP，携带 32-bit LCRC 与 Sequence Number</td>
+      <td>按 TLP ACK/NAK、Replay</td>
+      <td>建立传统逐 TLP 的链路层可靠性模型。</td>
+    </tr>
+    <tr>
+      <td>3.0 / 4.0 / 5.0</td>
+      <td>仍是单个 TLP 的 32-bit LCRC 与 Sequence Number</td>
+      <td>按 TLP ACK/NAK、Replay</td>
+      <td>速率与 PHY 编码演进，但 LCRC 的逐跳语义不变。PCIe 3.0 改用 128b/130b 编码，并未改变 LCRC 的基本职责。</td>
+    </tr>
+    <tr>
+      <td>6.0</td>
+      <td>固定 256B FLIT；FLIT 含 8B（64-bit）CRC</td>
+      <td>按 FLIT NAK、Replay，并先进行 FEC 纠错</td>
+      <td>引入 PAM4、FLIT Mode 和 3-way interleaved FEC；TLP/DLLP 不再各自携带传统 CRC 字节。</td>
+    </tr>
+    <tr>
+      <td>7.0</td>
+      <td>延续 256B FLIT 与 8B（64-bit）CRC</td>
+      <td>按 FLIT NAK、Replay，并配合 FEC</td>
+      <td>延续 PCIe 6.0 的 FLIT Mode 可靠性模型，提升到 128 GT/s。</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>在 PCIe 6.0/7.0 的 FLIT Mode 下，接收端先对 FLIT 执行 FEC 解码，再检查 FLIT CRC；若仍然失败，则通过链路层重传恢复。PCIe 6.0 的 256B FLIT 中，前 242B 的 TLP/DLP 内容由 8B CRC 保护，整个 FLIT 再由 6B FEC 保护。</p>
+
+<p>因此，本文的 TLP/DLLP 包格式图应理解为 Non-FLIT Mode 的示意。能够与旧版本互操作的 PCIe 6.0/7.0 链路仍可使用传统模式；一旦链路进入 FLIT Mode，即使用 FLIT 级 CRC、FEC 和重传机制。ECRC 仍属于事务层的端到端完整性机制，不应与 FLIT CRC 混为一谈。</p>
+
+<h2 id="ecrc端到端完整性检测">ECRC：端到端完整性检测</h2>
+
+<p>端到端循环冗余校验（ECRC, End-to-End Cyclic Redundancy Check）在 <strong>Non-FLIT Mode</strong> 下由 TLP 发送端生成，并放入 TLP 的 Digest 字段。它随着 TLP 穿越整条 Fabric，由最终接收端检查，用于发现逐跳 LCRC 无法覆盖的端到端错误。</p>
+
+<p>中间 Switch 通常不是该 TLP 的最终接收者，因此主要完成本跳 LCRC 校验和路由转发；如果 TLP 的目标正是 Switch 自身的 Function，它才作为最终接收者检查 ECRC。对于协议允许沿途变化的字段，ECRC 计算规则会进行相应处理，从而避免合法修改导致误报。</p>
+
+<p>一般来说，ECRC 覆盖跨 Fabric 转发时不应改变的 TLP 事务层内容，基本包括：</p>
+
+<ul>
+  <li>大部分 TLP Header 字段：
+    <ul>
+      <li>Fmt / Type：TLP 格式和类型，但 Type[0] 是特殊可变字段，计算时按规则处理。</li>
+      <li>TC：Traffic Class。</li>
+      <li>Attr：事务属性。</li>
+      <li>TH / TD / EP 等控制位，其中 EP 是特殊可变字段。</li>
+      <li>Length：Payload 长度。</li>
+      <li>Requester ID。</li>
+      <li>Tag。</li>
+      <li>Last DW BE / First DW BE。</li>
+      <li>Address：Memory / I/O Request 中的地址字段。</li>
+      <li>Completer ID：Completion TLP 中的完成方 ID。</li>
+      <li>Status / BCM / Byte Count / Lower Address：Completion Header 中的字段。</li>
+      <li>Message Code：Message TLP 中的消息类型字段。</li>
+    </ul>
+  </li>
+  <li>End-End TLP Prefix。</li>
+  <li>Data Payload。</li>
+</ul>
+
+<p>不同 TLP 类型和 PCIe 版本的精确覆盖方式应以对应版本规范为准。Sequence Number、LCRC 和 DLLP Framing 等数据链路层内容不属于 ECRC 覆盖对象。</p>
+
+<p>从包格式上看，ECRC 对应 TLP 中的 Digest 字段；Sequence Number 和 LCRC/CRC 属于链路层封装，只在相邻两个端口之间有效：</p>
+
+<p><img src="/assets/images/PCIE/pcie-tlp-dllp-packets-reference.png" alt="TLP和DLLP在PCIe Link中的包格式示意" /></p>
+
+<p>ECRC 的核心目的是让最终接收端检测 TLP 是否在端到端传输中发生了<strong>非预期损坏</strong>。它不是加密或访问控制机制：普通 PCIe Switch 为了路由可以读取必要的 Header 字段，普通 PCIe 也不会因为存在 ECRC 而隐藏 Payload。CRC 不是带密钥的认证码，不能抵御恶意节点有意修改 TLP 后重新计算校验值；需要保密性、抗篡改或抗重放保护时，应使用 PCIe IDE 等安全机制。</p>
+
+<p>ECRC 的实现能力始终是可选的；后续版本并没有要求所有 PCIe 设备必须实现 ECRC。变化主要体现在 PCIe 2.1 对已支持、已启用 ECRC 的行为提出了更明确的统一要求，以及 PCIe 6.0 对 Non-FLIT 与 FLIT Mode 的区分：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>PCIe 版本或模式</th>
+      <th>ECRC 规则</th>
+      <th>关键影响</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1.0 / 1.1 / 2.0</td>
+      <td>ECRC 是可选的事务层能力，以 TD bit 和 TLP Digest 表示。</td>
+      <td>系统可以只依赖逐跳 LCRC。</td>
+    </tr>
+    <tr>
+      <td>2.1 至 5.0</td>
+      <td>ECRC 仍是可选能力；但 Function 一旦启用 ECRC 生成，就必须对该 Function 发出的所有 TLP 应用 ECRC；启用检查后，必须检查所有目标为该设备且携带 ECRC 的 TLP。</td>
+      <td>避免设备只对部分 TLP 类型生成或检查 ECRC。</td>
+    </tr>
+    <tr>
+      <td>6.0 / 7.0 的 Non-FLIT Mode</td>
+      <td>延续传统 TD bit 和 TLP Digest 的 ECRC 规则。</td>
+      <td>本文后续关于 Digest、字段覆盖和最终接收端检查的说明适用于此模式。</td>
+    </tr>
+    <tr>
+      <td>6.0 / 7.0 的 FLIT Mode</td>
+      <td>TLP Digest/ECRC 规则被定义为 Non-FLIT Mode Only，不使用传统 TLP Digest ECRC。</td>
+      <td>FLIT CRC 与 FEC 提供 FLIT 级链路可靠性，但不能把 FLIT CRC 直接当作传统 ECRC。</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>换言之，PCIe 6.0/7.0 的 <strong>FLIT CRC 不是 ECRC 的同名替代品</strong>：前者按 FLIT 保护每一跳链路，后者是 Non-FLIT Mode 中按 TLP 携带的端到端校验。对于需要端到端安全属性的场景，还应结合 PCIe IDE 等机制评估。</p>
+
+<h2 id="为什么同时需要-lcrc-与-ecrc">为什么同时需要 LCRC 与 ECRC</h2>
+
+<p>以下流程仅适用于传统 Non-FLIT Mode，并假设源 Function 已启用 ECRC 生成、最终接收 Function 已启用 ECRC 检查：</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>源 Function：计算 ECRC 并写入 Digest -&gt; 添加 Sequence Number -&gt; 计算本跳 LCRC
+中间 Switch：校验本跳 LCRC -&gt; ACK/NAK 与必要时 Replay -&gt; 移除旧链路层封装
+             -&gt; 路由转发 -&gt; 添加下一跳 Sequence Number 和新的 LCRC
+最终接收端：校验最后一跳 LCRC，并检查 ECRC/Digest
+</code></pre></div></div>
+
+<p>可以把它类比为长途运输中的两层质检：每个中转站检查本段运输单据，发现损坏就立即要求上一站补发；收货方则根据货物清单核对货物的端到端校验记录，确认整段旅程后内容仍正确。运输单据对应 LCRC、ACK/NAK 和 Replay，货物清单则对应 ECRC。</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>维度</th>
+      <th>LCRC</th>
+      <th>ECRC</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>保护范围</td>
+      <td>一条 Link</td>
+      <td>源 Function 到最终接收 Function</td>
+    </tr>
+    <tr>
+      <td>所在层次</td>
+      <td>Data Link Layer</td>
+      <td>Transaction Layer</td>
+    </tr>
+    <tr>
+      <td>生成与校验</td>
+      <td>每一跳端口生成、校验并重算</td>
+      <td>源端生成，最终接收端检查</td>
+    </tr>
+    <tr>
+      <td>错误后的主要动作</td>
+      <td>ACK/NAK、Replay 重传</td>
+      <td>报告端到端完整性错误</td>
+    </tr>
+    <tr>
+      <td>能否保密或防御恶意篡改</td>
+      <td>不能</td>
+      <td>不能</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>LCRC 和 ECRC 不是替代关系。LCRC 负责定位并恢复单跳链路错误；ECRC 负责在最终目的地发现中间节点内部或多跳路径上遗留的端到端错误。两者都属于可靠性机制，而不是保密机制。</p>
+
+<h2 id="只使用一种校验会怎样">只使用一种校验会怎样</h2>
+
+<h3 id="只有-ecrc">只有 ECRC</h3>
+
+<p>ECRC 可以让最终接收端发现端到端内容不一致，中间 Switch 也可以选择检查经过的 ECRC；但它不能替代链路层的 ACK/NAK 和 Replay。若假设没有 LCRC 或等效的 FLIT CRC，主要后果是：</p>
+
+<ul>
+  <li>错误通常只能在最终接收端或某个可选检查点才被发现，无法在出错 Link 附近快速恢复。</li>
+  <li>无法依据 ECRC 失败定位具体是哪一跳 Link 出错。</li>
+  <li>不存在与本跳发送端 Retry Buffer 配套的标准逐跳重传，因此恢复延迟和影响范围都会扩大。</li>
+</ul>
+
+<p>因此，ECRC 适合做端到端兜底检测，而不是单独承担 PCIe 的链路可靠性职责。</p>
+
+<h3 id="只有-lcrc">只有 LCRC</h3>
+
+<p>在传统 Non-FLIT Mode 下，只有 LCRC 时 PCIe 仍可快速校验每一条 Link 并执行 ACK/NAK 和 Replay；这也是 ECRC 保持可选的原因。但此时系统缺少端到端完整性检测，下列问题可能不会被发现：</p>
+
+<ul>
+  <li>Switch 在入端 LCRC 校验成功后，其内部缓冲或转发路径意外改坏 TLP；出端会基于已损坏的内容重算新的、正确的 LCRC。</li>
+  <li>TLP 在源端进入第一条 Link 前，或在最终接收端完成最后一跳 LCRC 校验后，经过了发生错误的内部数据通路。</li>
+  <li>Link 传输错误以极低概率发生 CRC aliasing，恰好未改变 LCRC 结果。</li>
+  <li>异常或恶意中间设备修改 TLP 后重新计算下游 LCRC；普通 CRC 不带密钥，不能防止这种有意篡改。</li>
+</ul>
+
+<h3 id="lcrc-全部通过但-ecrc-检查失败">LCRC 全部通过但 ECRC 检查失败</h3>
+
+<p>该现象的前提是 ECRC 已生成并启用检查。它表示各跳 Link 上接收到的比特流都通过了本跳 LCRC 校验，但源端生成 ECRC 后、最终接收端检查 ECRC 前，TLP 的端到端内容出现了不一致。常见排查方向包括：</p>
+
+<ul>
+  <li><strong>Switch 内部缓冲或转发路径错误</strong>：入端 LCRC 校验成功后，TLP 在 Switch 内部被意外改坏；出端又基于已损坏的 TLP 重算了正确的 LCRC。</li>
+  <li><strong>源端 ECRC 生成或发送路径错误</strong>：例如 Digest 计算逻辑错误，或 ECRC 生成后、进入第一条 Link 前 TLP 内容发生改变。</li>
+  <li><strong>最终接收端接收或检查路径错误</strong>：最后一跳 LCRC 已验证链路传输正确，但接收端在 ECRC 检查前的数据通路或检查逻辑发生错误。</li>
+  <li><strong>可变字段处理不一致</strong>：对 Type[0]、EP、TLP Prefix 等具有特殊规则的字段处理不符合规范，导致发送端和接收端参与 ECRC 的内容不一致。</li>
+  <li><strong>Link 错误被 LCRC 漏检</strong>：CRC 存在极低概率的 aliasing；此时传输错误恰好未改变 LCRC 结果，仍可能由 ECRC 暴露。</li>
+</ul>
+
+<p>在多级拓扑中，Switch 内部转发路径通常是重点排查对象；但还应结合 ECRC/LCRC 错误计数、AER 日志和缩短拓扑后的复现结果，区分源端、Switch 与最终接收端的问题。</p>
+
+<p>在传统 Non-FLIT Mode 中，LCRC 是链路层可靠性机制；在 PCIe 6.0/7.0 的 FLIT Mode 中，则由 FLIT CRC、FEC 和按 FLIT 重传承担对应职责。ECRC 仍然是可选能力，缺少它不会阻止 PCIe 的基本链路传输，但会降低端到端错误检测覆盖。</p>
+
+<h2 id="总结">总结</h2>
+<ul>
+  <li>LCRC 是逐跳、可重传的链路层校验；每经过一个 Switch 都会被终结并重新生成。</li>
+  <li>在 Non-FLIT Mode 中，ECRC 是携带在 TLP Digest 中的端到端校验；它跨越多个 Link，通常由最终接收端检查。</li>
+  <li>LCRC 会覆盖本跳传输中的 ECRC/Digest 字段，因此能够保护 ECRC 本身在单跳链路上不被传输错误破坏。</li>
+</ul>
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://pcisig.com/specification-overview/pci-express-base">PCI-SIG: PCI Express Base Specification</a></li>
+  <li><a href="https://pcisig.com/sites/default/files/files/PCI-SIG%20PCIe%20for%20Automotive%20Functional%20Safety_v5_Final.pdf">PCI-SIG: PCIe for Automotive Functional Safety</a></li>
+  <li><a href="https://pcisig.com/blog/evolution-pci-express-specification-its-sixth-generation-third-decade-and-still-going-strong">PCI-SIG: The Evolution of the PCI Express Specification</a></li>
+  <li><a href="https://pcisig.com/section-53141-root-port-connected-multifunction-endpoint-root-port-ecrc-capable-multifunction">PCI-SIG FAQ: ECRC checking by the ultimate PCI Express Receiver</a></li>
+  <li><a href="https://www.dmtf.org/sites/default/files/standards/documents/DSP0238_1.0.pdf">DMTF DSP0238: MCTP PCIe VDM Transport Binding</a></li>
+</ul>
+</span>
+    <br>
+<div class="pagination">
+  
+  <a class="pagination-previous" href="/2026/08/03/excile/" data-toggle="tooltip" data-placement="top" title="放逐者"><span class=""></span> 放逐者</a>
+  
+  
+</div>
+
+</div>
+
+<!--<div class="box">-->
+    <!-- google ads code box -->
+<!--</div>-->
+
+
+
+
+  <div id="disqus_thread"></div>
+<script type="text/javascript">
+    
+    
+    var disqus_shortname = 'nagekar'; // required: replace example with your forum shortname
+    
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+
+
+
+
+
+      </div>
+
+      <div class="tile is-4 is-child">
+        <div class="tile is-parent is-vertical sidebar">
+
+          <div class="tile is-child widget">
+
+            <div class="card">
+              <header class="card-header">
+                <p class="card-header-title nice-title">
+                  Recent Posts
+                </p>
+              </header>
+              <div class="card-content">
+                <div class="content nice-text">
+                  <ul>
+                  
+                  <li><a href="/2026/08/04/PCIE-LCRC&ECRC/">
+                    PCIe 中 LCRC 与 ECRC 的区别
+                  </a></li>
+                  
+                  <li><a href="/2026/08/03/excile/">
+                    放逐者
+                  </a></li>
+                  
+                  <li><a href="/2026/08/02/echo-archive-card-design/">
+                    捣蛋档案馆
+                  </a></li>
+                  
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tile is-child widget">
+
+            <div class="card">
+              <header class="card-header">
+                <p class="card-header-title nice-title">
+                  Sponsored
+                </p>
+              </header>
+              <div class="card-content">
+                <div class="content nice-text">
+                  <img src="/assets/images/Dust_Bunny.jpg"/>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="tile is-child widget">
+            <div class="card">
+              <header class="card-header">
+                <p class="card-header-title nice-title">
+                  Recommended Websites
+                </p>
+              </header>
+              <div class="card-content">
+                <div class="content nice-text">
+                  <ul>
+                    <li>
+                      <a href="https://xkcd.com">xkcd</a>
+                    </li>
+                    <li>
+                      <a href="http://commitstrip.com">Commit Strip</a>
+                    </li>
+                    <li>
+                      <a href="http://www.smbc-comics.com">SMBC Comics</a>
+                    </li>
+                    <li>
+                      <a href="https://blog.codinghorror.com">Coding Horror</a>
+                    </li>
+                    <li>
+                      <a href="http://waitbutwhy.com">Wait Buy Why</a>
+                    </li>
+                    <li>
+                      <a href="https://simplysoch.wordpress.com/">Simply Soch</a>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <div class="content has-text-centered">
+      <p>
+        Some rights reserved.
+      </p>
+      <p>
+        Made with <i class="fa fa-heart"></i> and <a href="https://github.com/jgthms/bulma">Bulma</a>, <a href="https://jekyllrb.com/">Jekyll</a>. Hosted on <a href="https://github.com/">Github</a>
+      </p>
+      <p>
+        <a class="icon" href="https://github.com/abhn">
+          <i class="fa fa-github" title="Github"></i>
+        </a>
+        <a class="icon" href="https://in.linkedin.com/in/AbhishekNagekar">
+          <i class="fa fa-linkedin" title="Linkedin"></i>
+        </a>
+        <a class="icon" href="mailto:abhishek@nagekar.com">
+          <i class="fa fa-envelope" title="Email"></i>
+        </a>
+      </p>
+    </div>
+  </div>
+</footer>
+
+<!-- js -->
+<script src="/assets/js/custom.js"></script>
+<script src="/assets/js/typewriter.js"></script>
+</body>
+</html>

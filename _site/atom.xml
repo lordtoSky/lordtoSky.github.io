@@ -4,13 +4,565 @@
  <title>Soot Spirits</title>
  <link href="https://www.nagekar.com/atom.xml" rel="self"/>
  <link href="https://www.nagekar.com"/>
- <updated>2026-07-29T15:08:59+08:00</updated>
+ <updated>2026-08-05T18:47:43+08:00</updated>
  <id>https://www.nagekar.com</id>
  <author>
    <name>Abhishek Nagekar</name>
    <email>abhishek@nagekar.com</email>
  </author>
 
+ 
+ <entry>
+   <title>PCIe 中 LCRC 与 ECRC 的区别</title>
+   <link href="https://www.nagekar.com/2026/08/04/PCIE-LCRC&ECRC/"/>
+   <updated>2026-08-04T23:45:00+08:00</updated>
+   <id>https://www.nagekar.com/2026/08/04/PCIE-LCRC&ECRC</id>
+   <content type="html">&lt;h1 id=&quot;pcie-中-lcrc-与-ecrc-的区别&quot;&gt;PCIe 中 LCRC 与 ECRC 的区别&lt;/h1&gt;
+
+&lt;p&gt;PCIe 同时使用 LCRC（Link CRC）和 ECRC（End-to-End CRC），但两者不是重复校验同一件事：LCRC 负责&lt;strong&gt;逐跳链路的快速恢复&lt;/strong&gt;，ECRC 负责&lt;strong&gt;源 Function 到最终接收 Function 的完整性检测&lt;/strong&gt;。本文以传统 Non-FLIT Mode 的 TLP/DLLP 封装为例说明。&lt;/p&gt;
+
+&lt;h2 id=&quot;tlp-的传输模型&quot;&gt;TLP 的传输模型&lt;/h2&gt;
+
+&lt;p&gt;PCIe 采用由 Root Complex、Switch 和 Endpoint 组成的树状拓扑，相邻端口之间通过点对点 Link 连接。一份 TLP 从源 Function 到最终接收 Function 的过程属于&lt;strong&gt;端到端（End-to-End）传输&lt;/strong&gt;；它可能经过一个或多个 Switch，因此一条端到端路径通常由多跳彼此独立的 Link 组成：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/PCIE/pcie-tlp-switch-tree.png&quot; alt=&quot;TLP在多级PCIe Switch树形拓扑中的传递路径&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在一次事务中，发起请求的 Function 称为 &lt;strong&gt;Requester&lt;/strong&gt;，负责构造并发送 Request TLP；处理该请求的 Function 称为 &lt;strong&gt;Completer&lt;/strong&gt;。Requester 和 Completer 描述的是事务角色，而不是固定的设备类型。例如，Root Complex 和 Endpoint 在不同事务中都可能成为 Requester 或 Completer。&lt;/p&gt;
+
+&lt;p&gt;TLP Header 携带事务类型、长度、Requester ID、Tag，以及地址或目标 ID 等信息。Switch 需要读取这些路由相关字段，并根据 TLP 类型选择输出端口：Memory 和 I/O Request 通常采用地址路由，Configuration Request 和 Completion 通常采用 ID 路由，Message 可以采用隐式路由。Switch 只把 TLP 转发到匹配端口，而不是向所有分支广播。&lt;/p&gt;
+
+&lt;p&gt;从传输过程看，每一跳都有独立的数据链路层状态和流量控制。以传统 Non-FLIT Mode 为例，接收端口先检查本跳的 Sequence Number 和 LCRC；校验成功后，TLP 才进入 Switch 的转发路径，并在下一条 Link 具备足够接收缓冲区 Credit 时继续发送。发送端口会为下一跳重新添加 Sequence Number 并计算 LCRC，因此同一个 TLP 经过多跳时，每一跳的链路层封装彼此独立。&lt;/p&gt;
+
+&lt;p&gt;一个“事务”不一定只包含一个 TLP。Posted Request（例如 Memory Write）发送后通常不需要 Completion；Non-Posted Request（例如 Memory Read）则需要 Completer 返回 Completion，读取的数据还可能由多个 Completion with Data TLP 携带。因此，Request TLP 和对应的 Completion TLP 方向可以相反，但它们共同组成一次完整事务。&lt;/p&gt;
+
+&lt;p&gt;Switch 通常不会处理普通 Memory 事务的 Payload，大部分事务层内容在转发过程中保持不变；不过，协议允许少数字段、TLP Prefix 或不同传输模式之间的 Header 在路由节点中发生合法处理。因此，不能把 TLP 理解为在所有节点间必然逐比特不变。总体上，LCRC 保护每一跳的传输，ECRC 则检查源 Function 到最终接收 Function 之间的端到端完整性。&lt;/p&gt;
+
+&lt;h2 id=&quot;lcrc逐跳链路校验与重传&quot;&gt;LCRC：逐跳链路校验与重传&lt;/h2&gt;
+
+&lt;p&gt;链路循环冗余校验（LCRC, Link Cyclic Redundancy Check）是 PCIe 数据链路层用于检测&lt;strong&gt;单跳&lt;/strong&gt;传输错误的校验码。一跳指一对相邻 PCIe 端口之间的传输；一份 TLP 即使跨越多个 Switch，也会被拆成多段独立的单跳传输。&lt;/p&gt;
+
+&lt;p&gt;LCRC 只在生成它的那条 Link 上有效。接收端发现 LCRC 错误时，会通过 ACK/NAK 和 Replay 机制要求发送端从 Retry Buffer 重传，因此错误能在出错 Link 附近被定位和恢复，而不用等到最终接收端才发现。&lt;/p&gt;
+
+&lt;p&gt;LCRC 之所以必须逐跳重算，并不是因为 Switch 一定会修改 TLP 内容，而是因为每个 Switch 端口都会终结上一段数据链路：接收端口校验并移除上一跳的 Sequence Number 和 LCRC，发送端口再为下一跳生成新的 Sequence Number 和 LCRC。LCRC 还保护这些链路层封装，因此不能由 ECRC 取代。&lt;/p&gt;
+
+&lt;p&gt;前面的 Sequence Number、LCRC、ACK/NAK 和 Replay 描述适用于传统 &lt;strong&gt;Non-FLIT Mode&lt;/strong&gt;。PCIe 1.0 至 5.0 的 LCRC 核心机制基本一致；真正的结构性变化发生在 PCIe 6.0 引入 FLIT Mode 之后：&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;PCIe 版本&lt;/th&gt;
+      &lt;th&gt;链路封装与校验单位&lt;/th&gt;
+      &lt;th&gt;错误恢复机制&lt;/th&gt;
+      &lt;th&gt;核心变化&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;1.0 / 1.1 / 2.0&lt;/td&gt;
+      &lt;td&gt;单个 TLP，携带 32-bit LCRC 与 Sequence Number&lt;/td&gt;
+      &lt;td&gt;按 TLP ACK/NAK、Replay&lt;/td&gt;
+      &lt;td&gt;建立传统逐 TLP 的链路层可靠性模型。&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;3.0 / 4.0 / 5.0&lt;/td&gt;
+      &lt;td&gt;仍是单个 TLP 的 32-bit LCRC 与 Sequence Number&lt;/td&gt;
+      &lt;td&gt;按 TLP ACK/NAK、Replay&lt;/td&gt;
+      &lt;td&gt;速率与 PHY 编码演进，但 LCRC 的逐跳语义不变。PCIe 3.0 改用 128b/130b 编码，并未改变 LCRC 的基本职责。&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;6.0&lt;/td&gt;
+      &lt;td&gt;固定 256B FLIT；FLIT 含 8B（64-bit）CRC&lt;/td&gt;
+      &lt;td&gt;按 FLIT NAK、Replay，并先进行 FEC 纠错&lt;/td&gt;
+      &lt;td&gt;引入 PAM4、FLIT Mode 和 3-way interleaved FEC；TLP/DLLP 不再各自携带传统 CRC 字节。&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;7.0&lt;/td&gt;
+      &lt;td&gt;延续 256B FLIT 与 8B（64-bit）CRC&lt;/td&gt;
+      &lt;td&gt;按 FLIT NAK、Replay，并配合 FEC&lt;/td&gt;
+      &lt;td&gt;延续 PCIe 6.0 的 FLIT Mode 可靠性模型，提升到 128 GT/s。&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;在 PCIe 6.0/7.0 的 FLIT Mode 下，接收端先对 FLIT 执行 FEC 解码，再检查 FLIT CRC；若仍然失败，则通过链路层重传恢复。PCIe 6.0 的 256B FLIT 中，前 242B 的 TLP/DLP 内容由 8B CRC 保护，整个 FLIT 再由 6B FEC 保护。&lt;/p&gt;
+
+&lt;p&gt;因此，本文的 TLP/DLLP 包格式图应理解为 Non-FLIT Mode 的示意。能够与旧版本互操作的 PCIe 6.0/7.0 链路仍可使用传统模式；一旦链路进入 FLIT Mode，即使用 FLIT 级 CRC、FEC 和重传机制。ECRC 仍属于事务层的端到端完整性机制，不应与 FLIT CRC 混为一谈。&lt;/p&gt;
+
+&lt;h2 id=&quot;ecrc端到端完整性检测&quot;&gt;ECRC：端到端完整性检测&lt;/h2&gt;
+
+&lt;p&gt;端到端循环冗余校验（ECRC, End-to-End Cyclic Redundancy Check）在 &lt;strong&gt;Non-FLIT Mode&lt;/strong&gt; 下由 TLP 发送端生成，并放入 TLP 的 Digest 字段。它随着 TLP 穿越整条 Fabric，由最终接收端检查，用于发现逐跳 LCRC 无法覆盖的端到端错误。&lt;/p&gt;
+
+&lt;p&gt;中间 Switch 通常不是该 TLP 的最终接收者，因此主要完成本跳 LCRC 校验和路由转发；如果 TLP 的目标正是 Switch 自身的 Function，它才作为最终接收者检查 ECRC。对于协议允许沿途变化的字段，ECRC 计算规则会进行相应处理，从而避免合法修改导致误报。&lt;/p&gt;
+
+&lt;p&gt;一般来说，ECRC 覆盖跨 Fabric 转发时不应改变的 TLP 事务层内容，基本包括：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;大部分 TLP Header 字段：
+    &lt;ul&gt;
+      &lt;li&gt;Fmt / Type：TLP 格式和类型，但 Type[0] 是特殊可变字段，计算时按规则处理。&lt;/li&gt;
+      &lt;li&gt;TC：Traffic Class。&lt;/li&gt;
+      &lt;li&gt;Attr：事务属性。&lt;/li&gt;
+      &lt;li&gt;TH / TD / EP 等控制位，其中 EP 是特殊可变字段。&lt;/li&gt;
+      &lt;li&gt;Length：Payload 长度。&lt;/li&gt;
+      &lt;li&gt;Requester ID。&lt;/li&gt;
+      &lt;li&gt;Tag。&lt;/li&gt;
+      &lt;li&gt;Last DW BE / First DW BE。&lt;/li&gt;
+      &lt;li&gt;Address：Memory / I/O Request 中的地址字段。&lt;/li&gt;
+      &lt;li&gt;Completer ID：Completion TLP 中的完成方 ID。&lt;/li&gt;
+      &lt;li&gt;Status / BCM / Byte Count / Lower Address：Completion Header 中的字段。&lt;/li&gt;
+      &lt;li&gt;Message Code：Message TLP 中的消息类型字段。&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;End-End TLP Prefix。&lt;/li&gt;
+  &lt;li&gt;Data Payload。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;不同 TLP 类型和 PCIe 版本的精确覆盖方式应以对应版本规范为准。Sequence Number、LCRC 和 DLLP Framing 等数据链路层内容不属于 ECRC 覆盖对象。&lt;/p&gt;
+
+&lt;p&gt;从包格式上看，ECRC 对应 TLP 中的 Digest 字段；Sequence Number 和 LCRC/CRC 属于链路层封装，只在相邻两个端口之间有效：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/PCIE/pcie-tlp-dllp-packets-reference.png&quot; alt=&quot;TLP和DLLP在PCIe Link中的包格式示意&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;ECRC 的核心目的是让最终接收端检测 TLP 是否在端到端传输中发生了&lt;strong&gt;非预期损坏&lt;/strong&gt;。它不是加密或访问控制机制：普通 PCIe Switch 为了路由可以读取必要的 Header 字段，普通 PCIe 也不会因为存在 ECRC 而隐藏 Payload。CRC 不是带密钥的认证码，不能抵御恶意节点有意修改 TLP 后重新计算校验值；需要保密性、抗篡改或抗重放保护时，应使用 PCIe IDE 等安全机制。&lt;/p&gt;
+
+&lt;p&gt;ECRC 的实现能力始终是可选的；后续版本并没有要求所有 PCIe 设备必须实现 ECRC。变化主要体现在 PCIe 2.1 对已支持、已启用 ECRC 的行为提出了更明确的统一要求，以及 PCIe 6.0 对 Non-FLIT 与 FLIT Mode 的区分：&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;PCIe 版本或模式&lt;/th&gt;
+      &lt;th&gt;ECRC 规则&lt;/th&gt;
+      &lt;th&gt;关键影响&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;1.0 / 1.1 / 2.0&lt;/td&gt;
+      &lt;td&gt;ECRC 是可选的事务层能力，以 TD bit 和 TLP Digest 表示。&lt;/td&gt;
+      &lt;td&gt;系统可以只依赖逐跳 LCRC。&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2.1 至 5.0&lt;/td&gt;
+      &lt;td&gt;ECRC 仍是可选能力；但 Function 一旦启用 ECRC 生成，就必须对该 Function 发出的所有 TLP 应用 ECRC；启用检查后，必须检查所有目标为该设备且携带 ECRC 的 TLP。&lt;/td&gt;
+      &lt;td&gt;避免设备只对部分 TLP 类型生成或检查 ECRC。&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;6.0 / 7.0 的 Non-FLIT Mode&lt;/td&gt;
+      &lt;td&gt;延续传统 TD bit 和 TLP Digest 的 ECRC 规则。&lt;/td&gt;
+      &lt;td&gt;本文后续关于 Digest、字段覆盖和最终接收端检查的说明适用于此模式。&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;6.0 / 7.0 的 FLIT Mode&lt;/td&gt;
+      &lt;td&gt;TLP Digest/ECRC 规则被定义为 Non-FLIT Mode Only，不使用传统 TLP Digest ECRC。&lt;/td&gt;
+      &lt;td&gt;FLIT CRC 与 FEC 提供 FLIT 级链路可靠性，但不能把 FLIT CRC 直接当作传统 ECRC。&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;换言之，PCIe 6.0/7.0 的 &lt;strong&gt;FLIT CRC 不是 ECRC 的同名替代品&lt;/strong&gt;：前者按 FLIT 保护每一跳链路，后者是 Non-FLIT Mode 中按 TLP 携带的端到端校验。对于需要端到端安全属性的场景，还应结合 PCIe IDE 等机制评估。&lt;/p&gt;
+
+&lt;h2 id=&quot;为什么同时需要-lcrc-与-ecrc&quot;&gt;为什么同时需要 LCRC 与 ECRC&lt;/h2&gt;
+
+&lt;p&gt;以下流程仅适用于传统 Non-FLIT Mode，并假设源 Function 已启用 ECRC 生成、最终接收 Function 已启用 ECRC 检查：&lt;/p&gt;
+
+&lt;div class=&quot;language-text highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;源 Function：计算 ECRC 并写入 Digest -&amp;gt; 添加 Sequence Number -&amp;gt; 计算本跳 LCRC
+中间 Switch：校验本跳 LCRC -&amp;gt; ACK/NAK 与必要时 Replay -&amp;gt; 移除旧链路层封装
+             -&amp;gt; 路由转发 -&amp;gt; 添加下一跳 Sequence Number 和新的 LCRC
+最终接收端：校验最后一跳 LCRC，并检查 ECRC/Digest
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;可以把它类比为长途运输中的两层质检：每个中转站检查本段运输单据，发现损坏就立即要求上一站补发；收货方则根据货物清单核对货物的端到端校验记录，确认整段旅程后内容仍正确。运输单据对应 LCRC、ACK/NAK 和 Replay，货物清单则对应 ECRC。&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;维度&lt;/th&gt;
+      &lt;th&gt;LCRC&lt;/th&gt;
+      &lt;th&gt;ECRC&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;保护范围&lt;/td&gt;
+      &lt;td&gt;一条 Link&lt;/td&gt;
+      &lt;td&gt;源 Function 到最终接收 Function&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;所在层次&lt;/td&gt;
+      &lt;td&gt;Data Link Layer&lt;/td&gt;
+      &lt;td&gt;Transaction Layer&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;生成与校验&lt;/td&gt;
+      &lt;td&gt;每一跳端口生成、校验并重算&lt;/td&gt;
+      &lt;td&gt;源端生成，最终接收端检查&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;错误后的主要动作&lt;/td&gt;
+      &lt;td&gt;ACK/NAK、Replay 重传&lt;/td&gt;
+      &lt;td&gt;报告端到端完整性错误&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;能否保密或防御恶意篡改&lt;/td&gt;
+      &lt;td&gt;不能&lt;/td&gt;
+      &lt;td&gt;不能&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;LCRC 和 ECRC 不是替代关系。LCRC 负责定位并恢复单跳链路错误；ECRC 负责在最终目的地发现中间节点内部或多跳路径上遗留的端到端错误。两者都属于可靠性机制，而不是保密机制。&lt;/p&gt;
+
+&lt;h2 id=&quot;只使用一种校验会怎样&quot;&gt;只使用一种校验会怎样&lt;/h2&gt;
+
+&lt;h3 id=&quot;只有-ecrc&quot;&gt;只有 ECRC&lt;/h3&gt;
+
+&lt;p&gt;ECRC 可以让最终接收端发现端到端内容不一致，中间 Switch 也可以选择检查经过的 ECRC；但它不能替代链路层的 ACK/NAK 和 Replay。若假设没有 LCRC 或等效的 FLIT CRC，主要后果是：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;错误通常只能在最终接收端或某个可选检查点才被发现，无法在出错 Link 附近快速恢复。&lt;/li&gt;
+  &lt;li&gt;无法依据 ECRC 失败定位具体是哪一跳 Link 出错。&lt;/li&gt;
+  &lt;li&gt;不存在与本跳发送端 Retry Buffer 配套的标准逐跳重传，因此恢复延迟和影响范围都会扩大。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;因此，ECRC 适合做端到端兜底检测，而不是单独承担 PCIe 的链路可靠性职责。&lt;/p&gt;
+
+&lt;h3 id=&quot;只有-lcrc&quot;&gt;只有 LCRC&lt;/h3&gt;
+
+&lt;p&gt;在传统 Non-FLIT Mode 下，只有 LCRC 时 PCIe 仍可快速校验每一条 Link 并执行 ACK/NAK 和 Replay；这也是 ECRC 保持可选的原因。但此时系统缺少端到端完整性检测，下列问题可能不会被发现：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Switch 在入端 LCRC 校验成功后，其内部缓冲或转发路径意外改坏 TLP；出端会基于已损坏的内容重算新的、正确的 LCRC。&lt;/li&gt;
+  &lt;li&gt;TLP 在源端进入第一条 Link 前，或在最终接收端完成最后一跳 LCRC 校验后，经过了发生错误的内部数据通路。&lt;/li&gt;
+  &lt;li&gt;Link 传输错误以极低概率发生 CRC aliasing，恰好未改变 LCRC 结果。&lt;/li&gt;
+  &lt;li&gt;异常或恶意中间设备修改 TLP 后重新计算下游 LCRC；普通 CRC 不带密钥，不能防止这种有意篡改。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;lcrc-全部通过但-ecrc-检查失败&quot;&gt;LCRC 全部通过但 ECRC 检查失败&lt;/h3&gt;
+
+&lt;p&gt;该现象的前提是 ECRC 已生成并启用检查。它表示各跳 Link 上接收到的比特流都通过了本跳 LCRC 校验，但源端生成 ECRC 后、最终接收端检查 ECRC 前，TLP 的端到端内容出现了不一致。常见排查方向包括：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;Switch 内部缓冲或转发路径错误&lt;/strong&gt;：入端 LCRC 校验成功后，TLP 在 Switch 内部被意外改坏；出端又基于已损坏的 TLP 重算了正确的 LCRC。&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;源端 ECRC 生成或发送路径错误&lt;/strong&gt;：例如 Digest 计算逻辑错误，或 ECRC 生成后、进入第一条 Link 前 TLP 内容发生改变。&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;最终接收端接收或检查路径错误&lt;/strong&gt;：最后一跳 LCRC 已验证链路传输正确，但接收端在 ECRC 检查前的数据通路或检查逻辑发生错误。&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;可变字段处理不一致&lt;/strong&gt;：对 Type[0]、EP、TLP Prefix 等具有特殊规则的字段处理不符合规范，导致发送端和接收端参与 ECRC 的内容不一致。&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Link 错误被 LCRC 漏检&lt;/strong&gt;：CRC 存在极低概率的 aliasing；此时传输错误恰好未改变 LCRC 结果，仍可能由 ECRC 暴露。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;在多级拓扑中，Switch 内部转发路径通常是重点排查对象；但还应结合 ECRC/LCRC 错误计数、AER 日志和缩短拓扑后的复现结果，区分源端、Switch 与最终接收端的问题。&lt;/p&gt;
+
+&lt;p&gt;在传统 Non-FLIT Mode 中，LCRC 是链路层可靠性机制；在 PCIe 6.0/7.0 的 FLIT Mode 中，则由 FLIT CRC、FEC 和按 FLIT 重传承担对应职责。ECRC 仍然是可选能力，缺少它不会阻止 PCIe 的基本链路传输，但会降低端到端错误检测覆盖。&lt;/p&gt;
+
+&lt;h2 id=&quot;总结&quot;&gt;总结&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;LCRC 是逐跳、可重传的链路层校验；每经过一个 Switch 都会被终结并重新生成。&lt;/li&gt;
+  &lt;li&gt;在 Non-FLIT Mode 中，ECRC 是携带在 TLP Digest 中的端到端校验；它跨越多个 Link，通常由最终接收端检查。&lt;/li&gt;
+  &lt;li&gt;LCRC 会覆盖本跳传输中的 ECRC/Digest 字段，因此能够保护 ECRC 本身在单跳链路上不被传输错误破坏。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;references&quot;&gt;References&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://pcisig.com/specification-overview/pci-express-base&quot;&gt;PCI-SIG: PCI Express Base Specification&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://pcisig.com/sites/default/files/files/PCI-SIG%20PCIe%20for%20Automotive%20Functional%20Safety_v5_Final.pdf&quot;&gt;PCI-SIG: PCIe for Automotive Functional Safety&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://pcisig.com/blog/evolution-pci-express-specification-its-sixth-generation-third-decade-and-still-going-strong&quot;&gt;PCI-SIG: The Evolution of the PCI Express Specification&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://pcisig.com/section-53141-root-port-connected-multifunction-endpoint-root-port-ecrc-capable-multifunction&quot;&gt;PCI-SIG FAQ: ECRC checking by the ultimate PCI Express Receiver&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.dmtf.org/sites/default/files/standards/documents/DSP0238_1.0.pdf&quot;&gt;DMTF DSP0238: MCTP PCIe VDM Transport Binding&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</content>
+ </entry>
+ 
+ <entry>
+   <title>放逐者</title>
+   <link href="https://www.nagekar.com/2026/08/03/excile/"/>
+   <updated>2026-08-03T22:36:00+08:00</updated>
+   <id>https://www.nagekar.com/2026/08/03/excile</id>
+   <content type="html">&lt;h1 id=&quot;放逐者&quot;&gt;放逐者&lt;/h1&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/cards/exile-starship-rift.png&quot; alt=&quot;世界夹缝中的星舰&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;有一个族群，生来具备穿越世界的能力，他们被誉为世界旅行者。&lt;/p&gt;
+
+&lt;p&gt;他们来自世界之间的缝隙，在空间风暴中诞生。残酷的环境赋予了他们穿梭世界的能力，同时也让他们失去了定居于世界内的能力。随着族群的壮大，一代又一代人搭建出星舰，飘荡在世界之外。许多在世界缝隙探索未知的冒险者会在这座星舰上落脚补给。久而久之，这座星舰也被称为最后的绿洲。&lt;/p&gt;
+
+&lt;p&gt;但自从永恒历28123年之后，再也没人见过这个族群了，每一个自世界缝隙归来的冒险者都因为没能找到绿洲而提前返航，最后的绿洲从此成为历史书上的一笔注脚。&lt;/p&gt;
+
+&lt;p&gt;而这一切都是因为一个世界旅行者，也是最后一个世界旅行者卡瓦隆。在永恒历28114年，卡瓦隆偶然来到一个面临末日的世界。这个世界由于核心在大战中被摧毁，正在收缩的过程中。卡瓦隆从家乡带来人造核心来临时补救这个世界，但在路上被一伙自称放逐者的团体偷袭抢走人造核心。&lt;/p&gt;
+
+&lt;p&gt;放逐者拿到人造核心后构建为多个不稳定的时空奇点，经过世界旅行者一族的计算，放任不管会导致多个世界被吞灭，并最终吞没整个宇宙。唯一解决的办法是使用人造核心在时空奇点的稳定带构建新的奇点以实现平衡，最终卡瓦隆驾驶着星舰走向了永恒。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/cards/exile-starship-singularity.png&quot; alt=&quot;星舰驶向奇点群中心&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;放逐者仍然游荡在世界的缝隙中，想办法将这个世界放逐。&lt;/p&gt;
+</content>
+ </entry>
+ 
+ <entry>
+   <title>捣蛋档案馆</title>
+   <link href="https://www.nagekar.com/2026/08/02/echo-archive-card-design/"/>
+   <updated>2026-08-02T16:10:00+08:00</updated>
+   <id>https://www.nagekar.com/2026/08/02/echo-archive-card-design</id>
+   <content type="html">&lt;h1 id=&quot;捣蛋档案馆&quot;&gt;捣蛋档案馆&lt;/h1&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/cards/mischief-archive-card.png&quot; alt=&quot;捣蛋档案馆卡牌&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;午夜十二点，档案馆的门自己打了个哈欠。&lt;/p&gt;
+
+&lt;p&gt;值夜员本来只需要把书放回架子。直到第一枚亮晶晶的书签从《安静守则》里滑出来，第二枚插进他的帽子，第三枚落到桌面中央。&lt;/p&gt;
+
+&lt;p&gt;下一秒，书本自己翻开，茶杯排队鼓掌，地图卷成望远镜，认真检查每个人的鞋带。&lt;/p&gt;
+
+&lt;p&gt;值夜员举起登记簿：“每次只许发生一件事故。”&lt;/p&gt;
+
+&lt;p&gt;档案馆想了想，答应了。于是混乱变得很有礼貌：每次只咔哒一声，但谁也不知道下一次会跳出飞书、茶杯，还是一张夸大其词的地图。&lt;/p&gt;
+
+&lt;p&gt;清晨，馆长在门口发现一张值夜记录：&lt;/p&gt;
+
+&lt;p&gt;“一切正常。除了《安静守则》要求明天再办一次。”&lt;/p&gt;
+
+&lt;p&gt;这就是“捣蛋档案馆”：三枚书签是一句倒计时，把一次小差错变成大家都记得住的笑话。&lt;/p&gt;
+</content>
+ </entry>
+ 
+ <entry>
+   <title>HyperLogLog Algorithm</title>
+   <link href="https://www.nagekar.com/2026/07/29/HyperLogLog/"/>
+   <updated>2026-07-29T23:15:00+08:00</updated>
+   <id>https://www.nagekar.com/2026/07/29/HyperLogLog</id>
+   <content type="html">&lt;h1 id=&quot;hyperloglog-algorithm&quot;&gt;HyperLogLog Algorithm&lt;/h1&gt;
+&lt;h2 id=&quot;1-hll是什么&quot;&gt;1. HLL是什么&lt;/h2&gt;
+&lt;p&gt;一种用于估算集合中“不重复元素数量”的&lt;strong&gt;概率算法&lt;/strong&gt;，因为其为概率算法，因此存在误差，更适合对海量数据进行分析。&lt;/p&gt;
+&lt;h2 id=&quot;2-hll解决了什么&quot;&gt;2. HLL解决了什么&lt;/h2&gt;
+&lt;p&gt;对于数据处理来说，当前数据中有多少&lt;strong&gt;不重复元素&lt;/strong&gt;是一个很重要的参数。
+常规处理方式很简单粗暴：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;每新进来一个元素，查找已有元素&lt;/li&gt;
+  &lt;li&gt;如果查找命中，那么不重复元素数量不变&lt;/li&gt;
+  &lt;li&gt;如果查找未命中，那么数量++&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;这一方式在数据量小的时候可以作为解决方案，但随着数据量增加，查找效率快速下降，所需的存储空间也在增加，因此需要一种新的思路来解决海量数据中不重复元素的数量计算。
+因此，HLL主要解决的就是海量数据场景下，如何高效可靠的计算现有数据中的不重复数据数量。&lt;/p&gt;
+&lt;h2 id=&quot;3-hll如何解决的&quot;&gt;3. HLL如何解决的&lt;/h2&gt;
+&lt;p&gt;HLL的核心在于概率。一个硬币正面反面理论上出现的概率相同，但在实际中并不是五五开，&lt;del&gt;可以确定的是如果全是正面基本上等于作弊&lt;/del&gt;。
+对于任意一个数据来说，他都可以转换为一串二进制数，对于均匀二进制数而言，高位出现连续0（前导0）的概率很小。对于&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;m&lt;/code&gt;位二进制数，MSB为连续&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;n&lt;/code&gt;位0的概率为：
+\(P=2^{m-n}/2^m=1/2^{n}\)
+对于一堆二进制数而言，最大前导0数量为&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;n&lt;/code&gt;代表着堆大小大概率为$2^n$，这就是HLL通过罕见模式来估算整体不重复样本数量的方式。&lt;/p&gt;
+&lt;h2 id=&quot;4-hll的实现细节&quot;&gt;4. HLL的实现细节&lt;/h2&gt;
+
+&lt;h3 id=&quot;41-初始化寄存器&quot;&gt;4.1 初始化寄存器&lt;/h3&gt;
+
+&lt;p&gt;HLL首先选择一个精度参数&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;p&lt;/code&gt;，并创建&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;m=2^p&lt;/code&gt;个寄存器：&lt;/p&gt;
+
+\[m=2^p,\qquad M[0],M[1],\ldots,M[m-1]=0\]
+
+&lt;p&gt;每个寄存器只需要保存一个很小的整数，即对应分组中出现过的最大“秩”。&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;p&lt;/code&gt;越大，寄存器越多，估算误差越小，但占用的内存也越多。&lt;/p&gt;
+
+&lt;h3 id=&quot;42-哈希与分桶&quot;&gt;4.2 哈希与分桶&lt;/h3&gt;
+
+&lt;p&gt;对于每个输入元素$x$，首先使用分布均匀的哈希函数生成一个$L$位哈希值：&lt;/p&gt;
+
+\[h=\operatorname{Hash}(x)\]
+
+&lt;p&gt;通常取$L=64$。将哈希值分成两部分：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;前&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;p&lt;/code&gt;位用于确定寄存器编号$j$；&lt;/li&gt;
+  &lt;li&gt;剩余$q=L-p$位记为$w$，用于统计前导0。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;因此桶编号为：&lt;/p&gt;
+
+\[j=\operatorname{prefix}_p(h),\qquad 0\leq j&amp;lt;m\]
+
+&lt;p&gt;使用哈希值而不是原始数据，是为了让不同输入尽可能均匀地落入各个桶中。哈希函数的分布质量会直接影响HLL的准确性。&lt;/p&gt;
+
+&lt;h3 id=&quot;43-计算前导0的秩&quot;&gt;4.3 计算前导0的秩&lt;/h3&gt;
+
+&lt;p&gt;定义$\rho(w)$为&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;w&lt;/code&gt;中第一个1出现的位置，位置从1开始计算。它等价于前导0数量加1：&lt;/p&gt;
+
+\[\rho(w)=\operatorname{leadingZeros}(w)+1\]
+
+&lt;p&gt;例如：&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;二进制序列&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;w&lt;/code&gt;&lt;/th&gt;
+      &lt;th style=&quot;text-align: right&quot;&gt;前导0数量&lt;/th&gt;
+      &lt;th style=&quot;text-align: right&quot;&gt;$\rho(w)$&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;1...&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt;0&lt;/td&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt;1&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;01...&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt;1&lt;/td&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt;2&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;0001...&lt;/code&gt;&lt;/td&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt;3&lt;/td&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt;4&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;每次添加元素时，只保留对应寄存器观察到的最大值：&lt;/p&gt;
+
+\[M[j]\leftarrow\max\left(M[j],\rho(w)\right)\]
+
+&lt;p&gt;因为前导$n$个二进制位全部为0的概率是$2^{-n}$，所以观察到越大的$\rho(w)$，通常意味着处理过的不同元素越多。&lt;/p&gt;
+
+&lt;h3 id=&quot;44-估算基数&quot;&gt;4.4 估算基数&lt;/h3&gt;
+
+&lt;p&gt;如果只使用所有寄存器的最大值或算术平均值，结果很容易被极端值影响。HLL对所有寄存器使用调和平均思想，先计算：&lt;/p&gt;
+
+\[Z=\left(\sum_{j=0}^{m-1}2^{-M[j]}\right)^{-1}\]
+
+&lt;p&gt;然后得到原始基数估计值：&lt;/p&gt;
+
+\[E=\alpha_m m^2 Z
+  =\alpha_m\frac{m^2}
+  {\displaystyle\sum_{j=0}^{m-1}2^{-M[j]}}\]
+
+&lt;p&gt;其中$\alpha_m$是用于修正系统偏差的常数：&lt;/p&gt;
+
+\[\alpha_m=
+\begin{cases}
+0.673, &amp;amp; m=16\\
+0.697, &amp;amp; m=32\\
+0.709, &amp;amp; m=64\\
+\dfrac{0.7213}{1+1.079/m}, &amp;amp; m\geq128
+\end{cases}\]
+
+&lt;h3 id=&quot;45-小基数修正&quot;&gt;4.5 小基数修正&lt;/h3&gt;
+
+&lt;p&gt;当数据量较小时，很多寄存器仍然为0，此时直接使用原始估计值会产生较大偏差。设值为0的寄存器数量为$V$：&lt;/p&gt;
+
+\[V=\left|\left\{j\mid M[j]=0\right\}\right|\]
+
+&lt;p&gt;当$E\leq\frac{5}{2}m$且$V&amp;gt;0$时，通常使用线性计数进行修正：&lt;/p&gt;
+
+\[E_{\text{small}}=m\ln\left(\frac{m}{V}\right)\]
+
+&lt;p&gt;直观来说，空桶越少，说明出现过的不同元素越多。&lt;/p&gt;
+
+&lt;h3 id=&quot;46-大基数修正&quot;&gt;4.6 大基数修正&lt;/h3&gt;
+
+&lt;p&gt;哈希值的取值空间是有限的。当估算值逐渐接近$2^L$时，哈希碰撞会明显增加。经典HLL在$E&amp;gt;\frac{2^L}{30}$时使用如下修正：&lt;/p&gt;
+
+\[E_{\text{large}}
+=-2^L\ln\left(1-\frac{E}{2^L}\right)\]
+
+&lt;p&gt;使用64位哈希时，只有在极大的数据规模下才需要这一修正。现代实现（例如HLL++）通常还会使用实验得到的偏差表和稀疏表示进一步提高精度。&lt;/p&gt;
+
+&lt;h3 id=&quot;47-误差与内存&quot;&gt;4.7 误差与内存&lt;/h3&gt;
+
+&lt;p&gt;HLL的相对标准误差近似为：&lt;/p&gt;
+
+\[\operatorname{RSE}\approx\frac{1.04}{\sqrt{m}}
+=\frac{1.04}{\sqrt{2^p}}\]
+
+&lt;p&gt;常见参数对应关系如下：&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th style=&quot;text-align: right&quot;&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;p&lt;/code&gt;&lt;/th&gt;
+      &lt;th style=&quot;text-align: right&quot;&gt;寄存器数量$m$&lt;/th&gt;
+      &lt;th style=&quot;text-align: right&quot;&gt;理论相对误差&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt;10&lt;/td&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt;1,024&lt;/td&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt;约3.25%&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt;12&lt;/td&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt;4,096&lt;/td&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt;约1.63%&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt;14&lt;/td&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt;16,384&lt;/td&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt;约0.81%&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt;16&lt;/td&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt;65,536&lt;/td&gt;
+      &lt;td style=&quot;text-align: right&quot;&gt;约0.41%&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;若每个寄存器使用6位，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;p=14&lt;/code&gt;时所需的核心存储空间约为：&lt;/p&gt;
+
+\[16384\times6\ \text{bit}=98304\ \text{bit}=12\ \text{KiB}\]
+
+&lt;p&gt;无论输入一万个还是十亿个元素，寄存器数组的大小都不会随数据量增长。&lt;/p&gt;
+
+&lt;h3 id=&quot;48-添加元素的伪代码&quot;&gt;4.8 添加元素的伪代码&lt;/h3&gt;
+
+&lt;div class=&quot;language-text highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;function add(value):
+    h = hash64(value)
+
+    j = h 的前 p 位
+    w = h 的剩余 64-p 位
+    rank = leadingZeros(w) + 1
+
+    M[j] = max(M[j], rank)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;估算过程如下：&lt;/p&gt;
+
+&lt;div class=&quot;language-text highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;function count():
+    sum = 0
+    zeroCount = 0
+
+    for register in M:
+        sum += 2 ^ (-register)
+
+        if register == 0:
+            zeroCount += 1
+
+    estimate = alpha(m) * m * m / sum
+
+    if estimate &amp;lt;= 2.5 * m and zeroCount &amp;gt; 0:
+        estimate = m * ln(m / zeroCount)
+
+    return round(estimate)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h3 id=&quot;49-合并多个hll&quot;&gt;4.9 合并多个HLL&lt;/h3&gt;
+
+&lt;p&gt;HLL非常适合分布式计算。只要两个HLL使用相同的&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;p&lt;/code&gt;和哈希函数，就可以对每个寄存器取最大值来计算集合的并集：&lt;/p&gt;
+
+\[M_{A\cup B}[j]=\max\left(M_A[j],M_B[j]\right)\]
+
+&lt;p&gt;该操作不需要读取原始数据，合并后的误差和单个同精度HLL处于相同量级。例如，可以分别统计不同服务器上的独立用户，再将各服务器的HLL合并成全站独立用户估计值。&lt;/p&gt;
+
+&lt;h2 id=&quot;5-总结&quot;&gt;5. 总结&lt;/h2&gt;
+
+&lt;p&gt;HLL使用哈希值中的罕见前导0模式推测数据规模，并通过分桶降低单次随机事件带来的波动。其主要特点是：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;内存占用固定且很小；&lt;/li&gt;
+  &lt;li&gt;添加元素和合并操作都很快；&lt;/li&gt;
+  &lt;li&gt;适合分布式海量数据的去重计数；&lt;/li&gt;
+  &lt;li&gt;结果是估算值，不能返回具体元素，也不适合要求完全精确的场景。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;HLL本质上是在准确度和空间开销之间做出的工程权衡：它放弃少量精度，换取了数量级上的内存节省。&lt;/p&gt;
+</content>
+ </entry>
  
  <entry>
    <title>Markdown Test</title>
