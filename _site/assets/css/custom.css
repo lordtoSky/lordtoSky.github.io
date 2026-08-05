@@ -13,10 +13,10 @@
 }
 
 .main-container {
-    max-width: 900px;
+    width: 80%;
+    max-width: none;
     margin: 0 auto;
-    padding-left: 2%;
-    padding-right: 2%;
+    padding: 0;
 }
 
 .container {
@@ -110,6 +110,11 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: bold;
 }
 @media screen and (max-width: 768px) {
+  .main-container {
+    width: 100%;
+    padding-left: 2%;
+    padding-right: 2%;
+  }
   .pagination {
     flex-wrap: nowrap;
   }
