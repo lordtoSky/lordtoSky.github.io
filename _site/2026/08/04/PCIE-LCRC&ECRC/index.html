@@ -135,36 +135,60 @@
 <table>
   <thead>
     <tr>
-      <th>PCIe 版本</th>
-      <th>链路封装与校验单位</th>
-      <th>错误恢复机制</th>
-      <th>核心变化</th>
+      <th style="text-align: center">PCIe 版本</th>
+      <th style="text-align: center">链路封装与校验单位</th>
+      <th style="text-align: center">错误恢复机制</th>
+      <th style="text-align: center">核心变化</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>1.0 / 1.1 / 2.0</td>
-      <td>单个 TLP，携带 32-bit LCRC 与 Sequence Number</td>
-      <td>按 TLP ACK/NAK、Replay</td>
-      <td>建立传统逐 TLP 的链路层可靠性模型。</td>
+      <td style="text-align: center">1.0</td>
+      <td style="text-align: center">单个 TLP，携带 32-bit LCRC 与 Sequence Number</td>
+      <td style="text-align: center">按 TLP ACK/NAK、Replay</td>
+      <td style="text-align: center">建立传统逐 TLP 的链路层可靠性模型。</td>
     </tr>
     <tr>
-      <td>3.0 / 4.0 / 5.0</td>
-      <td>仍是单个 TLP 的 32-bit LCRC 与 Sequence Number</td>
-      <td>按 TLP ACK/NAK、Replay</td>
-      <td>速率与 PHY 编码演进，但 LCRC 的逐跳语义不变。PCIe 3.0 改用 128b/130b 编码，并未改变 LCRC 的基本职责。</td>
+      <td style="text-align: center">1.1</td>
+      <td style="text-align: center">单个 TLP，携带 32-bit LCRC 与 Sequence Number</td>
+      <td style="text-align: center">按 TLP ACK/NAK、Replay</td>
+      <td style="text-align: center">延续 PCIe 1.0 的链路层机制。</td>
     </tr>
     <tr>
-      <td>6.0</td>
-      <td>固定 256B FLIT；FLIT 含 8B（64-bit）CRC</td>
-      <td>按 FLIT NAK、Replay，并先进行 FEC 纠错</td>
-      <td>引入 PAM4、FLIT Mode 和 3-way interleaved FEC；TLP/DLLP 不再各自携带传统 CRC 字节。</td>
+      <td style="text-align: center">2.0</td>
+      <td style="text-align: center">单个 TLP，携带 32-bit LCRC 与 Sequence Number</td>
+      <td style="text-align: center">按 TLP ACK/NAK、Replay</td>
+      <td style="text-align: center">提升链路速率，LCRC 机制不变。</td>
     </tr>
     <tr>
-      <td>7.0</td>
-      <td>延续 256B FLIT 与 8B（64-bit）CRC</td>
-      <td>按 FLIT NAK、Replay，并配合 FEC</td>
-      <td>延续 PCIe 6.0 的 FLIT Mode 可靠性模型，提升到 128 GT/s。</td>
+      <td style="text-align: center">3.0</td>
+      <td style="text-align: center">单个 TLP，携带 32-bit LCRC 与 Sequence Number</td>
+      <td style="text-align: center">按 TLP ACK/NAK、Replay</td>
+      <td style="text-align: center">改用 128b/130b 编码，LCRC 的逐跳语义不变。</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">4.0</td>
+      <td style="text-align: center">单个 TLP，携带 32-bit LCRC 与 Sequence Number</td>
+      <td style="text-align: center">按 TLP ACK/NAK、Replay</td>
+      <td style="text-align: center">提升链路速率，LCRC 机制不变。</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">5.0</td>
+      <td style="text-align: center">单个 TLP，携带 32-bit LCRC 与 Sequence Number</td>
+      <td style="text-align: center">按 TLP ACK/NAK、Replay</td>
+      <td style="text-align: center">提升链路速率，LCRC 机制不变。</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">6.0</td>
+      <td style="text-align: center">固定 256B FLIT；FLIT 含 8B（64-bit）CRC</td>
+      <td style="text-align: center">按 FLIT NAK、Replay，并先进行 FEC 纠错</td>
+      <td style="text-align: center">引入 PAM4、FLIT Mode 和 3-way interleaved FEC；TLP/DLLP 不再各自携带传统 CRC 字节。</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">7.0</td>
+      <td style="text-align: center">延续 256B FLIT 与 8B（64-bit）CRC</td>
+      <td style="text-align: center">按 FLIT NAK、Replay，并配合 FEC</td>
+      <td style="text-align: center">延续 PCIe 6.0 的 FLIT Mode 可靠性模型，提升到 128 GT/s。</td>
     </tr>
   </tbody>
 </table>
@@ -215,31 +239,66 @@
 <table>
   <thead>
     <tr>
-      <th>PCIe 版本或模式</th>
-      <th>ECRC 规则</th>
-      <th>关键影响</th>
+      <th style="text-align: center">PCIe 版本或模式</th>
+      <th style="text-align: center">ECRC 规则</th>
+      <th style="text-align: center">关键影响</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>1.0 / 1.1 / 2.0</td>
-      <td>ECRC 是可选的事务层能力，以 TD bit 和 TLP Digest 表示。</td>
-      <td>系统可以只依赖逐跳 LCRC。</td>
+      <td style="text-align: center">1.0</td>
+      <td style="text-align: center">ECRC 是可选的事务层能力，以 TD bit 和 TLP Digest 表示。</td>
+      <td style="text-align: center">系统可以只依赖逐跳 LCRC。</td>
     </tr>
     <tr>
-      <td>2.1 至 5.0</td>
-      <td>ECRC 仍是可选能力；但 Function 一旦启用 ECRC 生成，就必须对该 Function 发出的所有 TLP 应用 ECRC；启用检查后，必须检查所有目标为该设备且携带 ECRC 的 TLP。</td>
-      <td>避免设备只对部分 TLP 类型生成或检查 ECRC。</td>
+      <td style="text-align: center">1.1</td>
+      <td style="text-align: center">ECRC 是可选的事务层能力，以 TD bit 和 TLP Digest 表示。</td>
+      <td style="text-align: center">延续 PCIe 1.0 的 ECRC 规则。</td>
     </tr>
     <tr>
-      <td>6.0 / 7.0 的 Non-FLIT Mode</td>
-      <td>延续传统 TD bit 和 TLP Digest 的 ECRC 规则。</td>
-      <td>本文后续关于 Digest、字段覆盖和最终接收端检查的说明适用于此模式。</td>
+      <td style="text-align: center">2.0</td>
+      <td style="text-align: center">ECRC 是可选的事务层能力，以 TD bit 和 TLP Digest 表示。</td>
+      <td style="text-align: center">延续 PCIe 1.1 的 ECRC 规则。</td>
     </tr>
     <tr>
-      <td>6.0 / 7.0 的 FLIT Mode</td>
-      <td>TLP Digest/ECRC 规则被定义为 Non-FLIT Mode Only，不使用传统 TLP Digest ECRC。</td>
-      <td>FLIT CRC 与 FEC 提供 FLIT 级链路可靠性，但不能把 FLIT CRC 直接当作传统 ECRC。</td>
+      <td style="text-align: center">2.1</td>
+      <td style="text-align: center">ECRC 仍是可选能力；启用生成后，必须对该 Function 发出的所有 TLP 应用 ECRC；启用检查后，必须检查所有目标为该设备且携带 ECRC 的 TLP。</td>
+      <td style="text-align: center">避免设备只对部分 TLP 类型生成或检查 ECRC。</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">3.0</td>
+      <td style="text-align: center">延续 PCIe 2.1 的 ECRC 可选性与启用后规则。</td>
+      <td style="text-align: center">ECRC 规则不因 128b/130b 编码而改变。</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">4.0</td>
+      <td style="text-align: center">延续 PCIe 2.1 的 ECRC 可选性与启用后规则。</td>
+      <td style="text-align: center">ECRC 规则保持不变。</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">5.0</td>
+      <td style="text-align: center">延续 PCIe 2.1 的 ECRC 可选性与启用后规则。</td>
+      <td style="text-align: center">ECRC 规则保持不变。</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">6.0 Non-FLIT Mode</td>
+      <td style="text-align: center">延续传统 TD bit 和 TLP Digest 的 ECRC 规则。</td>
+      <td style="text-align: center">本文关于 Digest、字段覆盖和最终接收端检查的说明适用于此模式。</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">6.0 FLIT Mode</td>
+      <td style="text-align: center">TLP Digest/ECRC 规则被定义为 Non-FLIT Mode Only，不使用传统 TLP Digest ECRC。</td>
+      <td style="text-align: center">FLIT CRC 与 FEC 提供 FLIT 级链路可靠性，但不能把 FLIT CRC 直接当作传统 ECRC。</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">7.0 Non-FLIT Mode</td>
+      <td style="text-align: center">延续传统 TD bit 和 TLP Digest 的 ECRC 规则。</td>
+      <td style="text-align: center">与 PCIe 6.0 Non-FLIT Mode 的 ECRC 规则一致。</td>
+    </tr>
+    <tr>
+      <td style="text-align: center">7.0 FLIT Mode</td>
+      <td style="text-align: center">不使用传统 TLP Digest ECRC。</td>
+      <td style="text-align: center">延续 PCIe 6.0 的 FLIT CRC 与 FEC 机制。</td>
     </tr>
   </tbody>
 </table>
@@ -346,7 +405,6 @@
 </ul>
 
 <h2 id="references">References</h2>
-
 <ul>
   <li><a href="https://pcisig.com/specification-overview/pci-express-base">PCI-SIG: PCI Express Base Specification</a></li>
   <li><a href="https://pcisig.com/sites/default/files/files/PCI-SIG%20PCIe%20for%20Automotive%20Functional%20Safety_v5_Final.pdf">PCI-SIG: PCIe for Automotive Functional Safety</a></li>
