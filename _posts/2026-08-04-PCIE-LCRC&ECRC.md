@@ -5,11 +5,11 @@ date: "2026-08-04 23:45:00"
 description: "理解 PCIe 中逐跳 LCRC 与端到端 ECRC 的分工"
 tags: [Protocol, PCIe, LCRC, ECRC]
 ---
-# PCIe 中 LCRC 与 ECRC 的区别
+# 1. PCIe 中 LCRC 与 ECRC 的区别
 
 PCIe 同时使用 LCRC（Link CRC）和 ECRC（End-to-End CRC），但两者不是重复校验同一件事：LCRC 负责**逐跳链路的快速恢复**，ECRC 负责**源 Function 到最终接收 Function 的完整性检测**。本文以传统 Non-FLIT Mode 的 TLP/DLLP 封装为例说明。
 
-## TLP 的传输模型
+## 1.1 TLP 的传输模型
 
 PCIe 采用由 Root Complex、Switch 和 Endpoint 组成的树状拓扑，相邻端口之间通过点对点 Link 连接。一份 TLP 从源 Function 到最终接收 Function 的过程属于**端到端（End-to-End）传输**；它可能经过一个或多个 Switch，因此一条端到端路径通常由多跳彼此独立的 Link 组成：
 
@@ -25,7 +25,7 @@ TLP Header 携带事务类型、长度、Requester ID、Tag，以及地址或目
 
 Switch 通常不会处理普通 Memory 事务的 Payload，大部分事务层内容在转发过程中保持不变；不过，协议允许少数字段、TLP Prefix 或不同传输模式之间的 Header 在路由节点中发生合法处理。因此，不能把 TLP 理解为在所有节点间必然逐比特不变。总体上，LCRC 保护每一跳的传输，ECRC 则检查源 Function 到最终接收 Function 之间的端到端完整性。
 
-## LCRC：逐跳链路校验与重传
+## 1.2 LCRC：逐跳链路校验与重传
 
 链路循环冗余校验（LCRC, Link Cyclic Redundancy Check）是 PCIe 数据链路层用于检测**单跳**传输错误的校验码。一跳指一对相邻 PCIe 端口之间的传输；一份 TLP 即使跨越多个 Switch，也会被拆成多段独立的单跳传输。
 
@@ -50,7 +50,7 @@ LCRC 之所以必须逐跳重算，并不是因为 Switch 一定会修改 TLP �
 
 因此，本文的 TLP/DLLP 包格式图应理解为 Non-FLIT Mode 的示意。能够与旧版本互操作的 PCIe 6.0/7.0 链路仍可使用传统模式；一旦链路进入 FLIT Mode，即使用 FLIT 级 CRC、FEC 和重传机制。ECRC 仍属于事务层的端到端完整性机制，不应与 FLIT CRC 混为一谈。
 
-## ECRC：端到端完整性检测
+## 1.3 ECRC：端到端完整性检测
 
 端到端循环冗余校验（ECRC, End-to-End Cyclic Redundancy Check）在 **Non-FLIT Mode** 下由 TLP 发送端生成，并放入 TLP 的 Digest 字段。它随着 TLP 穿越整条 Fabric，由最终接收端检查，用于发现逐跳 LCRC 无法覆盖的端到端错误。
 
@@ -101,7 +101,7 @@ ECRC 的实现能力始终是可选的；后续版本并没有要求所有 PCIe 
 换言之，PCIe 6.0/7.0 的 **FLIT CRC 不是 ECRC 的同名替代品**：前者按 FLIT 保护每一跳链路，后者是 Non-FLIT Mode 中按 TLP 携带的端到端校验。对于需要端到端安全属性的场景，还应结合 PCIe IDE 等机制评估。
 
 
-## 为什么同时需要 LCRC 与 ECRC
+## 1.4 为什么同时需要 LCRC 与 ECRC
 
 以下流程仅适用于传统 Non-FLIT Mode，并假设源 Function 已启用 ECRC 生成、最终接收 Function 已启用 ECRC 检查：
 
@@ -124,9 +124,9 @@ ECRC 的实现能力始终是可选的；后续版本并没有要求所有 PCIe 
 
 LCRC 和 ECRC 不是替代关系。LCRC 负责定位并恢复单跳链路错误；ECRC 负责在最终目的地发现中间节点内部或多跳路径上遗留的端到端错误。两者都属于可靠性机制，而不是保密机制。
 
-## 只使用一种校验会怎样
+## 1.5 只使用一种校验会怎样
 
-### 只有 ECRC
+### 1.5.1 只有 ECRC
 
 ECRC 可以让最终接收端发现端到端内容不一致，中间 Switch 也可以选择检查经过的 ECRC；但它不能替代链路层的 ACK/NAK 和 Replay。若假设没有 LCRC 或等效的 FLIT CRC，主要后果是：
 
@@ -136,7 +136,7 @@ ECRC 可以让最终接收端发现端到端内容不一致，中间 Switch 也�
 
 因此，ECRC 适合做端到端兜底检测，而不是单独承担 PCIe 的链路可靠性职责。
 
-### 只有 LCRC
+### 1.5.2 只有 LCRC
 
 在传统 Non-FLIT Mode 下，只有 LCRC 时 PCIe 仍可快速校验每一条 Link 并执行 ACK/NAK 和 Replay；这也是 ECRC 保持可选的原因。但此时系统缺少端到端完整性检测，下列问题可能不会被发现：
 
@@ -145,7 +145,7 @@ ECRC 可以让最终接收端发现端到端内容不一致，中间 Switch 也�
 - Link 传输错误以极低概率发生 CRC aliasing，恰好未改变 LCRC 结果。
 - 异常或恶意中间设备修改 TLP 后重新计算下游 LCRC；普通 CRC 不带密钥，不能防止这种有意篡改。
 
-### LCRC 全部通过但 ECRC 检查失败
+### 1.5.3 LCRC 全部通过但 ECRC 检查失败
 
 该现象的前提是 ECRC 已生成并启用检查。它表示各跳 Link 上接收到的比特流都通过了本跳 LCRC 校验，但源端生成 ECRC 后、最终接收端检查 ECRC 前，TLP 的端到端内容出现了不一致。常见排查方向包括：
 
@@ -159,12 +159,12 @@ ECRC 可以让最终接收端发现端到端内容不一致，中间 Switch 也�
 
 在传统 Non-FLIT Mode 中，LCRC 是链路层可靠性机制；在 PCIe 6.0/7.0 的 FLIT Mode 中，则由 FLIT CRC、FEC 和按 FLIT 重传承担对应职责。ECRC 仍然是可选能力，缺少它不会阻止 PCIe 的基本链路传输，但会降低端到端错误检测覆盖。
 
-## 总结
+## 1.6 总结
 - LCRC 是逐跳、可重传的链路层校验；每经过一个 Switch 都会被终结并重新生成。
 - 在 Non-FLIT Mode 中，ECRC 是携带在 TLP Digest 中的端到端校验；它跨越多个 Link，通常由最终接收端检查。
 - LCRC 会覆盖本跳传输中的 ECRC/Digest 字段，因此能够保护 ECRC 本身在单跳链路上不被传输错误破坏。
 
-## References
+## 1.7 References
 - [PCI-SIG: PCI Express Base Specification](https://pcisig.com/specification-overview/pci-express-base)
 - [PCI-SIG: PCIe for Automotive Functional Safety](https://pcisig.com/sites/default/files/files/PCI-SIG%20PCIe%20for%20Automotive%20Functional%20Safety_v5_Final.pdf)
 - [PCI-SIG: The Evolution of the PCI Express Specification](https://pcisig.com/blog/evolution-pci-express-specification-its-sixth-generation-third-decade-and-still-going-strong)
