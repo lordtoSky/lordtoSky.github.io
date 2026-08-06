@@ -93,6 +93,24 @@ h1.title > span {
     margin-top: 0.35em;
 }
 
+.post-text table {
+    width: 100%;
+    margin: 1em 0;
+    border-collapse: collapse;
+}
+
+.post-text th,
+.post-text td {
+    border: 1px solid #c9c9c9;
+    padding: 0.5em 0.75em;
+    vertical-align: top;
+}
+
+.post-text th {
+    background: #f5f5f5;
+    font-weight: 600;
+}
+
 /* sorry God. Just once */
 .sidebar {
     padding: 0 0.75rem 0.75rem 0.75rem !important;
