@@ -58,7 +58,7 @@ LCRC 之所以必须逐跳重算，并不是因为 Switch 一定会修改 TLP �
 
 一般来说，ECRC 覆盖跨 Fabric 转发时不应改变的 TLP 事务层内容，基本包括：
 
-+ 大部分 TLP Header 字段：
+- 大部分 TLP Header 字段：
   + Fmt / Type：TLP 格式和类型，但 Type[0] 是特殊可变字段，计算时按规则处理。
   + TC：Traffic Class。
   + Attr：事务属性。
@@ -71,8 +71,8 @@ LCRC 之所以必须逐跳重算，并不是因为 Switch 一定会修改 TLP �
   + Completer ID：Completion TLP 中的完成方 ID。
   + Status / BCM / Byte Count / Lower Address：Completion Header 中的字段。
   + Message Code：Message TLP 中的消息类型字段。
-+ End-End TLP Prefix。
-+ Data Payload。
+- End-End TLP Prefix。
+- Data Payload。
 
 不同 TLP 类型和 PCIe 版本的精确覆盖方式应以对应版本规范为准。Sequence Number、LCRC 和 DLLP Framing 等数据链路层内容不属于 ECRC 覆盖对象。
 
@@ -130,9 +130,9 @@ LCRC 和 ECRC 不是替代关系。LCRC 负责定位并恢复单跳链路错误�
 
 ECRC 可以让最终接收端发现端到端内容不一致，中间 Switch 也可以选择检查经过的 ECRC；但它不能替代链路层的 ACK/NAK 和 Replay。若假设没有 LCRC 或等效的 FLIT CRC，主要后果是：
 
-+ 错误通常只能在最终接收端或某个可选检查点才被发现，无法在出错 Link 附近快速恢复。
-+ 无法依据 ECRC 失败定位具体是哪一跳 Link 出错。
-+ 不存在与本跳发送端 Retry Buffer 配套的标准逐跳重传，因此恢复延迟和影响范围都会扩大。
+- 错误通常只能在最终接收端或某个可选检查点才被发现，无法在出错 Link 附近快速恢复。
+- 无法依据 ECRC 失败定位具体是哪一跳 Link 出错。
+- 不存在与本跳发送端 Retry Buffer 配套的标准逐跳重传，因此恢复延迟和影响范围都会扩大。
 
 因此，ECRC 适合做端到端兜底检测，而不是单独承担 PCIe 的链路可靠性职责。
 
@@ -140,33 +140,33 @@ ECRC 可以让最终接收端发现端到端内容不一致，中间 Switch 也�
 
 在传统 Non-FLIT Mode 下，只有 LCRC 时 PCIe 仍可快速校验每一条 Link 并执行 ACK/NAK 和 Replay；这也是 ECRC 保持可选的原因。但此时系统缺少端到端完整性检测，下列问题可能不会被发现：
 
-+ Switch 在入端 LCRC 校验成功后，其内部缓冲或转发路径意外改坏 TLP；出端会基于已损坏的内容重算新的、正确的 LCRC。
-+ TLP 在源端进入第一条 Link 前，或在最终接收端完成最后一跳 LCRC 校验后，经过了发生错误的内部数据通路。
-+ Link 传输错误以极低概率发生 CRC aliasing，恰好未改变 LCRC 结果。
-+ 异常或恶意中间设备修改 TLP 后重新计算下游 LCRC；普通 CRC 不带密钥，不能防止这种有意篡改。
+- Switch 在入端 LCRC 校验成功后，其内部缓冲或转发路径意外改坏 TLP；出端会基于已损坏的内容重算新的、正确的 LCRC。
+- TLP 在源端进入第一条 Link 前，或在最终接收端完成最后一跳 LCRC 校验后，经过了发生错误的内部数据通路。
+- Link 传输错误以极低概率发生 CRC aliasing，恰好未改变 LCRC 结果。
+- 异常或恶意中间设备修改 TLP 后重新计算下游 LCRC；普通 CRC 不带密钥，不能防止这种有意篡改。
 
 ### LCRC 全部通过但 ECRC 检查失败
 
 该现象的前提是 ECRC 已生成并启用检查。它表示各跳 Link 上接收到的比特流都通过了本跳 LCRC 校验，但源端生成 ECRC 后、最终接收端检查 ECRC 前，TLP 的端到端内容出现了不一致。常见排查方向包括：
 
-+ **Switch 内部缓冲或转发路径错误**：入端 LCRC 校验成功后，TLP 在 Switch 内部被意外改坏；出端又基于已损坏的 TLP 重算了正确的 LCRC。
-+ **源端 ECRC 生成或发送路径错误**：例如 Digest 计算逻辑错误，或 ECRC 生成后、进入第一条 Link 前 TLP 内容发生改变。
-+ **最终接收端接收或检查路径错误**：最后一跳 LCRC 已验证链路传输正确，但接收端在 ECRC 检查前的数据通路或检查逻辑发生错误。
-+ **可变字段处理不一致**：对 Type[0]、EP、TLP Prefix 等具有特殊规则的字段处理不符合规范，导致发送端和接收端参与 ECRC 的内容不一致。
-+ **Link 错误被 LCRC 漏检**：CRC 存在极低概率的 aliasing；此时传输错误恰好未改变 LCRC 结果，仍可能由 ECRC 暴露。
+- **Switch 内部缓冲或转发路径错误**：入端 LCRC 校验成功后，TLP 在 Switch 内部被意外改坏；出端又基于已损坏的 TLP 重算了正确的 LCRC。
+- **源端 ECRC 生成或发送路径错误**：例如 Digest 计算逻辑错误，或 ECRC 生成后、进入第一条 Link 前 TLP 内容发生改变。
+- **最终接收端接收或检查路径错误**：最后一跳 LCRC 已验证链路传输正确，但接收端在 ECRC 检查前的数据通路或检查逻辑发生错误。
+- **可变字段处理不一致**：对 Type[0]、EP、TLP Prefix 等具有特殊规则的字段处理不符合规范，导致发送端和接收端参与 ECRC 的内容不一致。
+- **Link 错误被 LCRC 漏检**：CRC 存在极低概率的 aliasing；此时传输错误恰好未改变 LCRC 结果，仍可能由 ECRC 暴露。
 
 在多级拓扑中，Switch 内部转发路径通常是重点排查对象；但还应结合 ECRC/LCRC 错误计数、AER 日志和缩短拓扑后的复现结果，区分源端、Switch 与最终接收端的问题。
 
 在传统 Non-FLIT Mode 中，LCRC 是链路层可靠性机制；在 PCIe 6.0/7.0 的 FLIT Mode 中，则由 FLIT CRC、FEC 和按 FLIT 重传承担对应职责。ECRC 仍然是可选能力，缺少它不会阻止 PCIe 的基本链路传输，但会降低端到端错误检测覆盖。
 
 ## 总结
-+ LCRC 是逐跳、可重传的链路层校验；每经过一个 Switch 都会被终结并重新生成。
-+ 在 Non-FLIT Mode 中，ECRC 是携带在 TLP Digest 中的端到端校验；它跨越多个 Link，通常由最终接收端检查。
-+ LCRC 会覆盖本跳传输中的 ECRC/Digest 字段，因此能够保护 ECRC 本身在单跳链路上不被传输错误破坏。
+- LCRC 是逐跳、可重传的链路层校验；每经过一个 Switch 都会被终结并重新生成。
+- 在 Non-FLIT Mode 中，ECRC 是携带在 TLP Digest 中的端到端校验；它跨越多个 Link，通常由最终接收端检查。
+- LCRC 会覆盖本跳传输中的 ECRC/Digest 字段，因此能够保护 ECRC 本身在单跳链路上不被传输错误破坏。
 
 ## References
-+ [PCI-SIG: PCI Express Base Specification](https://pcisig.com/specification-overview/pci-express-base)
-+ [PCI-SIG: PCIe for Automotive Functional Safety](https://pcisig.com/sites/default/files/files/PCI-SIG%20PCIe%20for%20Automotive%20Functional%20Safety_v5_Final.pdf)
-+ [PCI-SIG: The Evolution of the PCI Express Specification](https://pcisig.com/blog/evolution-pci-express-specification-its-sixth-generation-third-decade-and-still-going-strong)
-+ [PCI-SIG FAQ: ECRC checking by the ultimate PCI Express Receiver](https://pcisig.com/section-53141-root-port-connected-multifunction-endpoint-root-port-ecrc-capable-multifunction)
-+ [DMTF DSP0238: MCTP PCIe VDM Transport Binding](https://www.dmtf.org/sites/default/files/standards/documents/DSP0238_1.0.pdf)
+- [PCI-SIG: PCI Express Base Specification](https://pcisig.com/specification-overview/pci-express-base)
+- [PCI-SIG: PCIe for Automotive Functional Safety](https://pcisig.com/sites/default/files/files/PCI-SIG%20PCIe%20for%20Automotive%20Functional%20Safety_v5_Final.pdf)
+- [PCI-SIG: The Evolution of the PCI Express Specification](https://pcisig.com/blog/evolution-pci-express-specification-its-sixth-generation-third-decade-and-still-going-strong)
+- [PCI-SIG FAQ: ECRC checking by the ultimate PCI Express Receiver](https://pcisig.com/section-53141-root-port-connected-multifunction-endpoint-root-port-ecrc-capable-multifunction)
+- [DMTF DSP0238: MCTP PCIe VDM Transport Binding](https://www.dmtf.org/sites/default/files/standards/documents/DSP0238_1.0.pdf)

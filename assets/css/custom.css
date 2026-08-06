@@ -83,6 +83,16 @@ h1.title > span {
     margin-bottom: 1em;
 }
 
+.post-text ul {
+    list-style: disc outside;
+    margin: 1em 0;
+    padding-left: 1.5em;
+}
+
+.post-text li + li {
+    margin-top: 0.35em;
+}
+
 /* sorry God. Just once */
 .sidebar {
     padding: 0 0.75rem 0.75rem 0.75rem !important;
@@ -101,8 +111,8 @@ html, body {
 a {
     color: #57A3E8;
 }
-/* Hotfix for lists being misaligned */
-.tile.is-parent ol, ul {
+/* Keep lists aligned within tile content without affecting site navigation. */
+.tile.is-parent ol, .tile.is-parent ul {
   padding: 2% 5%;
 }
 /* Hotfix for Bulma striping headings of styling */
