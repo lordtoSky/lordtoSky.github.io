@@ -4,13 +4,191 @@
  <title>Soot Spirits</title>
  <link href="https://www.nagekar.com/atom.xml" rel="self"/>
  <link href="https://www.nagekar.com"/>
- <updated>2026-08-06T11:30:27+08:00</updated>
+ <updated>2026-08-07T15:07:17+08:00</updated>
  <id>https://www.nagekar.com</id>
  <author>
    <name>Abhishek Nagekar</name>
    <email>abhishek@nagekar.com</email>
  </author>
 
+ 
+ <entry>
+   <title>PCIe 中 TLP 结构</title>
+   <link href="https://www.nagekar.com/2026/08/06/PCIE-TLP-format/"/>
+   <updated>2026-08-06T11:35:00+08:00</updated>
+   <id>https://www.nagekar.com/2026/08/06/PCIE-TLP-format</id>
+   <content type="html">&lt;h1 id=&quot;structure-of-tlp-in-pcie&quot;&gt;Structure of TLP in PCIE&lt;/h1&gt;
+&lt;h2 id=&quot;1-tlp&quot;&gt;1 TLP&lt;/h2&gt;
+&lt;p&gt;事务层报文(Transaction Layor Package, TLP)，是PCIE在事务层进行数据传输的主要报文&lt;/p&gt;
+&lt;h2 id=&quot;2-structure&quot;&gt;2 Structure&lt;/h2&gt;
+&lt;p&gt;TLP可以被划分为三个部分：&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;Header：由Device Core生成，一般3-4个DWs，事物的控制信息，用于Fabric正确识别、路由和处理该TLP&lt;/li&gt;
+  &lt;li&gt;Payload：由Device Core生成，为1~1024 DWs，事务的实际传输数据&lt;/li&gt;
+  &lt;li&gt;Digest/ECRC：可选部分，根据Header与Payload的数据计算得出，用于End-to-End 数据校验&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/images/PCIE/pcie-tlp-request-header-formats.png&quot; alt=&quot;PCIe Request TLP Header Formats&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;图：PCIe Memory、I/O 与 Configuration Request TLP Header 格式。&lt;/em&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;21-header&quot;&gt;2.1 Header&lt;/h3&gt;
+
+&lt;p&gt;不同 TLP 类型复用同一组 Header DW，但字段含义并不完全相同。下表列出常见字段；&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW0&lt;/code&gt; 表示 Header 的第一个 32-bit 字，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DWn[msb:lsb]&lt;/code&gt; 表示字段的 Bit 位置。具体位宽和是否存在应以对应 TLP 类型及 PCIe 版本规范为准。&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;字段&lt;/th&gt;
+      &lt;th&gt;典型 Bit 位置&lt;/th&gt;
+      &lt;th&gt;作用&lt;/th&gt;
+      &lt;th&gt;常见适用 TLP&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Fmt / Type&lt;/td&gt;
+      &lt;td&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW0[31:29]&lt;/code&gt; / &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW0[28:24]&lt;/code&gt;&lt;/td&gt;
+      &lt;td&gt;标识 TLP 的格式与事务类型，例如 Memory、I/O、Configuration、Completion 或 Message；&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Fmt&lt;/code&gt; 同时指示是否携带 Payload、Header 为 3DW 还是 4DW。&lt;/td&gt;
+      &lt;td&gt;所有 TLP&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;TC (Traffic Class)&lt;/td&gt;
+      &lt;td&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW0[22:20]&lt;/code&gt;&lt;/td&gt;
+      &lt;td&gt;指定事务服务等级，供 Fabric 实施服务质量与虚拟通道映射。&lt;/td&gt;
+      &lt;td&gt;所有 TLP&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Attr&lt;/td&gt;
+      &lt;td&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW0[18]&lt;/code&gt;、&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW0[13:12]&lt;/code&gt;&lt;/td&gt;
+      &lt;td&gt;携带事务属性，例如 Relaxed Ordering、No Snoop 与 ID-Based Ordering。&lt;/td&gt;
+      &lt;td&gt;大多数 TLP&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;TD / EP&lt;/td&gt;
+      &lt;td&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW0[15]&lt;/code&gt; / &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW0[14]&lt;/code&gt;&lt;/td&gt;
+      &lt;td&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;TD&lt;/code&gt; 表示 TLP 后附带 Digest/ECRC；&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;EP&lt;/code&gt; 标识 Poisoned TLP。&lt;/td&gt;
+      &lt;td&gt;大多数 TLP&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Length&lt;/td&gt;
+      &lt;td&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW0[9:0]&lt;/code&gt;&lt;/td&gt;
+      &lt;td&gt;指示 Payload 的长度，单位为 DW（4 Byte）。&lt;/td&gt;
+      &lt;td&gt;有 Payload 的 TLP，以及部分请求 TLP&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Requester ID&lt;/td&gt;
+      &lt;td&gt;Request Header：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW1[31:16]&lt;/code&gt;；Completion：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW2[31:16]&lt;/code&gt;&lt;/td&gt;
+      &lt;td&gt;标识发起该请求的 Function，用于路由 Completion 并关联请求。&lt;/td&gt;
+      &lt;td&gt;Memory、I/O、Configuration Request 等&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Tag&lt;/td&gt;
+      &lt;td&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW1[15:8]&lt;/code&gt;；扩展 Tag 启用时另有高位&lt;/td&gt;
+      &lt;td&gt;由 Requester 分配的请求标识，Completion 使用它匹配原始请求。&lt;/td&gt;
+      &lt;td&gt;Non-Posted Request 与 Completion&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;First / Last DW BE&lt;/td&gt;
+      &lt;td&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW1[3:0]&lt;/code&gt; / &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW1[7:4]&lt;/code&gt;&lt;/td&gt;
+      &lt;td&gt;指定首、尾 DW 中哪些字节有效，支持非 DW 对齐的数据访问。&lt;/td&gt;
+      &lt;td&gt;Memory、I/O、Configuration Request&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Address&lt;/td&gt;
+      &lt;td&gt;3DW：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW2[31:2]&lt;/code&gt;；4DW：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW2[31:0]&lt;/code&gt;、&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW3[31:2]&lt;/code&gt;&lt;/td&gt;
+      &lt;td&gt;给出 Memory 或 I/O 请求的目标地址；Memory Request 可使用 32-bit 或 64-bit 地址。&lt;/td&gt;
+      &lt;td&gt;Memory Request、I/O Request&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Completer ID&lt;/td&gt;
+      &lt;td&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW1[31:16]&lt;/code&gt;&lt;/td&gt;
+      &lt;td&gt;标识生成 Completion 的 Function。&lt;/td&gt;
+      &lt;td&gt;Completion&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Status / BCM&lt;/td&gt;
+      &lt;td&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW1[15:13]&lt;/code&gt; / &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW1[12]&lt;/code&gt;&lt;/td&gt;
+      &lt;td&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Status&lt;/code&gt; 给出 Completion 结果；&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;BCM&lt;/code&gt; 用于特定 Completion 的 Byte Count 解释。&lt;/td&gt;
+      &lt;td&gt;Completion&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Byte Count / Lower Address&lt;/td&gt;
+      &lt;td&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW1[11:0]&lt;/code&gt; / &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW2[6:0]&lt;/code&gt;&lt;/td&gt;
+      &lt;td&gt;说明本次 Completion 返回的有效字节数及数据在原请求中的起始位置。&lt;/td&gt;
+      &lt;td&gt;Completion with Data&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Bus / Device / Function / Register Number&lt;/td&gt;
+      &lt;td&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW2[31:24]&lt;/code&gt; / &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW2[23:19]&lt;/code&gt; / &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW2[18:16]&lt;/code&gt; / &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW2[11:2]&lt;/code&gt;&lt;/td&gt;
+      &lt;td&gt;指定 Configuration Space 的目标 Function 与寄存器位置。&lt;/td&gt;
+      &lt;td&gt;Configuration Request&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Message Code&lt;/td&gt;
+      &lt;td&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;DW1[7:0]&lt;/code&gt;&lt;/td&gt;
+      &lt;td&gt;标识 Message TLP 的具体消息类别。&lt;/td&gt;
+      &lt;td&gt;Message&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;&lt;strong&gt;关键参数：&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;类型与格式：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Fmt&lt;/code&gt;、&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Type&lt;/code&gt;。&lt;/strong&gt; 这是解析 Header 的入口。&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Type&lt;/code&gt; 决定该 TLP 是请求、Completion 还是 Message；&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Fmt&lt;/code&gt; 决定是否有 Payload，以及采用 3DW 或 4DW Header。只有先确定这两个字段，才能正确解释后续 DW 中的 Address、Completion 或 Configuration 字段。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;长度与有效字节：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Length&lt;/code&gt;、&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;First DW BE&lt;/code&gt;、&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Last DW BE&lt;/code&gt;。&lt;/strong&gt; &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Length&lt;/code&gt; 以 DW 为单位给出 Payload 长度，或在 Memory Read Request 中给出请求长度。首尾 Byte Enable 进一步限定首、尾 DW 内哪些 Byte 有效，因此有效业务数据量可能小于 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Length × 4B&lt;/code&gt;。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;请求匹配：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Requester ID&lt;/code&gt;、&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Tag&lt;/code&gt;。&lt;/strong&gt; Requester 为每个 Non-Posted Request 分配 Tag；Completion 携带相同的 Requester ID 与 Tag，使接收端能够将乱序返回的 Completion 关联回正确请求。调试 Completion Timeout、Unexpected Completion 或 Tag 耗尽时，这组字段最关键。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;目标定位：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Address&lt;/code&gt; 或 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Bus/Device/Function/Register Number&lt;/code&gt;。&lt;/strong&gt; Memory/I/O Request 通过 Address 定位目标地址空间；Configuration Request 不使用普通 Memory Address，而是使用 BDF 与 Register Number 访问配置空间。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;事务属性：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;TC&lt;/code&gt;、&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Attr&lt;/code&gt;、&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;AT&lt;/code&gt;。&lt;/strong&gt; 这些字段影响 Fabric 的服务等级、虚拟通道映射、排序和缓存语义，以及地址转换方式。它们不是数据内容，但会改变事务在系统中的处理规则。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;完整性与错误传播：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;TD&lt;/code&gt;、&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;EP&lt;/code&gt;。&lt;/strong&gt; &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;TD=1&lt;/code&gt; 表示 TLP 末尾带有 Digest/ECRC；&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;EP=1&lt;/code&gt; 表示发送端将该 TLP 标记为 Error Poisoned，提示接收端其数据或结果可能不可信。两者都不是链路层重传控制字段。&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;Completion 结果：&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Completer ID&lt;/code&gt;、&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Status&lt;/code&gt;、&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Byte Count&lt;/code&gt;、&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Lower Address&lt;/code&gt;。&lt;/strong&gt; 这些字段说明由哪个 Function 完成请求、完成是否成功、当前返回了多少有效数据，以及这段数据对应原请求中的哪个位置。&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;22-payload&quot;&gt;2.2 Payload&lt;/h3&gt;
+
+&lt;h2 id=&quot;3-key-words&quot;&gt;3 key words&lt;/h2&gt;
+
+&lt;h2 id=&quot;4-summary&quot;&gt;4 summary&lt;/h2&gt;
+
+&lt;h2 id=&quot;5-reference&quot;&gt;5 reference&lt;/h2&gt;
+</content>
+ </entry>
+ 
+ <entry>
+   <title>PCIe 中 ECRC 生成</title>
+   <link href="https://www.nagekar.com/2026/08/06/PCIE-ECRC_Generate/"/>
+   <updated>2026-08-06T11:35:00+08:00</updated>
+   <id>https://www.nagekar.com/2026/08/06/PCIE-ECRC_Generate</id>
+   <content type="html">&lt;h1 id=&quot;ecrc-generate&quot;&gt;ECRC Generate&lt;/h1&gt;
+&lt;h2 id=&quot;range-of-ecrc&quot;&gt;range of ECRC&lt;/h2&gt;
+&lt;p&gt;在协议分层方面，ECRC作用的范围就是TLP。在字段方面，ECRC作用在TLP包绝大多数字段，包括：&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;h2 id=&quot;how-to-cal&quot;&gt;how to cal&lt;/h2&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;fast-generate&quot;&gt;fast generate&lt;/h2&gt;
+
+&lt;h2 id=&quot;summary&quot;&gt;summary&lt;/h2&gt;
+
+&lt;h2 id=&quot;reference&quot;&gt;reference&lt;/h2&gt;
+</content>
+ </entry>
  
  <entry>
    <title>PCIe 中 LCRC 与 ECRC 的区别</title>

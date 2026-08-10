@@ -104,11 +104,11 @@
     <div class="content"><span class="post-text"><ul class="posts">
     
     <li class="post">
-        <small>04 Aug 2026</small>
-        <small><a style="color:grey" href="/2026/08/04/PCIE-LCRC&ECRC/#disqus_thread"></a></small>
+        <small>06 Aug 2026</small>
+        <small><a style="color:grey" href="/2026/08/06/PCIE-TLP-format/#disqus_thread"></a></small>
         <br>
-        <a class="nice-title" href="/2026/08/04/PCIE-LCRC&ECRC/">PCIe 中 LCRC 与 ECRC 的区别</a>
-        <p class="nice-text">1. PCIe 中 LCRC 与 ECRC 的区别 PCIe 同时使用 LCRC（Link CRC）和 ECRC（End-to-End CRC），但两者不是重复校验同一件事：LCRC 负责逐跳链路的快速恢复，ECRC 负责源 Function 到最终接收 Function 的完整性检测。本文以传统 Non-FLIT Mode 的 TLP/DLLP 封装为例说明。 1.1 TLP 的传输模型 PCIe 采用由 Root Complex、Switch 和 Endpoint 组成的树状拓扑，相邻端口之间通过点对点 Link 连接。一份 TLP 从源 Function 到最终接收 Function 的过程属于端到端（End-to-End）传输；它可能经过一个或多个 Switch，因此一条端到端路径通常由多跳彼此独立的 Link 组成： 在一次事务中，发起请求的 Function 称为 Requester，负责构造并发送 Request... <a href="/2026/08/04/PCIE-LCRC&ECRC/">Read more!</a></p>
+        <a class="nice-title" href="/2026/08/06/PCIE-TLP-format/">PCIe 中 TLP 结构</a>
+        <p class="nice-text">Structure of TLP in PCIE 1 TLP 事务层报文(Transaction Layor Package, TLP)，是PCIE在事务层进行数据传输的主要报文 2 Structure TLP可以被划分为三个部分： Header：由Device Core生成，一般3-4个DWs，事物的控制信息，用于Fabric正确识别、路由和处理该TLP Payload：由Device Core生成，为1~1024 DWs，事务的实际传输数据 Digest/ECRC：可选部分，根据Header与Payload的数据计算得出，用于End-to-End 数据校验 图：PCIe Memory、I/O 与 Configuration Request TLP Header 格式。 2.1 Header 不同 TLP 类型复用同一组 Header DW，但字段含义并不完全相同。下表列出常见字段；DW0 表示 Header 的第一个 32-bit 字，DWn[msb:lsb] 表示字段的 Bit 位置。具体位宽和是否存在应以对应 TLP 类型及 PCIe 版本规范为准。 字段 典型... <a href="/2026/08/06/PCIE-TLP-format/">Read more!</a></p>
     </li>
     
     <div class="pagination is-centered">
@@ -116,7 +116,7 @@
     <span class="pagination-previous is-left">Previous</span>
   
   <span class="pagination-list">
-    Page: 1 of 6
+    Page: 1 of 8
   </span>
   
     <a class="pagination-next" href="/blog/page2/" class="next">Next</a>
@@ -158,16 +158,16 @@
                 <div class="content nice-text">
                   <ul>
                   
+                  <li><a href="/2026/08/06/PCIE-TLP-format/">
+                    PCIe 中 TLP 结构
+                  </a></li>
+                  
+                  <li><a href="/2026/08/06/PCIE-ECRC_Generate/">
+                    PCIe 中 ECRC 生成
+                  </a></li>
+                  
                   <li><a href="/2026/08/04/PCIE-LCRC&ECRC/">
                     PCIe 中 LCRC 与 ECRC 的区别
-                  </a></li>
-                  
-                  <li><a href="/2026/08/03/excile/">
-                    放逐者
-                  </a></li>
-                  
-                  <li><a href="/2026/08/02/echo-archive-card-design/">
-                    捣蛋档案馆
                   </a></li>
                   
                   </ul>

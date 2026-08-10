@@ -104,11 +104,11 @@
     <div class="content"><span class="post-text"><ul class="posts">
     
     <li class="post">
-        <small>17 Apr 2017</small>
-        <small><a style="color:grey" href="/2017/04/17/lorem-ipsum/#disqus_thread"></a></small>
+        <small>29 Jul 2026</small>
+        <small><a style="color:grey" href="/2026/07/29/HyperLogLog/#disqus_thread"></a></small>
         <br>
-        <a class="nice-title" href="/2017/04/17/lorem-ipsum/">Lorem Ipsum</a>
-        <p class="nice-text">Lorem ipsum dolor sit amet Lorem ipsum dolor sit amet ut paulo aperiam signiferumque quo. Quaeque pertinacia mnesarchum te vel. Ei tollit habemus delectus mel, pro zril cetero adipiscing an. Eius aliquip legimus ad mea, vix te quod eripuit, munere doctus oporteat qui te. Dolore fierent nam ea. Eos ex... <a href="/2017/04/17/lorem-ipsum/">Read more!</a></p>
+        <a class="nice-title" href="/2026/07/29/HyperLogLog/">HyperLogLog Algorithm</a>
+        <p class="nice-text">HyperLogLog Algorithm 1. HLL是什么 一种用于估算集合中“不重复元素数量”的概率算法，因为其为概率算法，因此存在误差，更适合对海量数据进行分析。 2. HLL解决了什么 对于数据处理来说，当前数据中有多少不重复元素是一个很重要的参数。 常规处理方式很简单粗暴： 每新进来一个元素，查找已有元素 如果查找命中，那么不重复元素数量不变 如果查找未命中，那么数量++ 这一方式在数据量小的时候可以作为解决方案，但随着数据量增加，查找效率快速下降，所需的存储空间也在增加，因此需要一种新的思路来解决海量数据中不重复元素的数量计算。 因此，HLL主要解决的就是海量数据场景下，如何高效可靠的计算现有数据中的不重复数据数量。 3. HLL如何解决的 HLL的核心在于概率。一个硬币正面反面理论上出现的概率相同，但在实际中并不是五五开，可以确定的是如果全是正面基本上等于作弊。 对于任意一个数据来说，他都可以转换为一串二进制数，对于均匀二进制数而言，高位出现连续0（前导0）的概率很小。对于m位二进制数，MSB为连续n位0的概率为： \(P=2^{m-n}/2^m=1/2^{n}\) 对于一堆二进制数而言，最大前导0数量为n代表着堆大小大概率为$2^n$，这就是HLL通过罕见模式来估算整体不重复样本数量的方式。 4. HLL的实现细节 4.1 初始化寄存器 HLL首先选择一个精度参数p，并创建m=2^p个寄存器： \[m=2^p,\qquad M[0],M[1],\ldots,M[m-1]=0\] 每个寄存器只需要保存一个很小的整数，即对应分组中出现过的最大“秩”。p越大，寄存器越多，估算误差越小，但占用的内存也越多。 4.2 哈希与分桶 对于每个输入元素$x$，首先使用分布均匀的哈希函数生成一个$L$位哈希值： \[h=\operatorname{Hash}(x)\] 通常取$L=64$。将哈希值分成两部分： 前p位用于确定寄存器编号$j$； 剩余$q=L-p$位记为$w$，用于统计前导0。 因此桶编号为： \[j=\operatorname{prefix}_p(h),\qquad 0\leq j&lt;m\] 使用哈希值而不是原始数据，是为了让不同输入尽可能均匀地落入各个桶中。哈希函数的分布质量会直接影响HLL的准确性。 4.3 计算前导0的秩 定义$\rho(w)$为w中第一个1出现的位置，位置从1开始计算。它等价于前导0数量加1： \[\rho(w)=\operatorname{leadingZeros}(w)+1\] 例如： 二进制序列w 前导0数量 $\rho(w)$ 1... 0... <a href="/2026/07/29/HyperLogLog/">Read more!</a></p>
     </li>
     
     <div class="pagination is-centered">
@@ -116,10 +116,10 @@
     <a href="/blog/page5/" class="pagination-previous">Previous</a>
   
   <span class="pagination-list">
-    Page: 6 of 6
+    Page: 6 of 8
   </span>
   
-    <span class="pagination-next">Next</span>
+    <a class="pagination-next" href="/blog/page7/" class="next">Next</a>
   
 </div>
 
@@ -158,16 +158,16 @@
                 <div class="content nice-text">
                   <ul>
                   
+                  <li><a href="/2026/08/06/PCIE-TLP-format/">
+                    PCIe 中 TLP 结构
+                  </a></li>
+                  
+                  <li><a href="/2026/08/06/PCIE-ECRC_Generate/">
+                    PCIe 中 ECRC 生成
+                  </a></li>
+                  
                   <li><a href="/2026/08/04/PCIE-LCRC&ECRC/">
                     PCIe 中 LCRC 与 ECRC 的区别
-                  </a></li>
-                  
-                  <li><a href="/2026/08/03/excile/">
-                    放逐者
-                  </a></li>
-                  
-                  <li><a href="/2026/08/02/echo-archive-card-design/">
-                    捣蛋档案馆
                   </a></li>
                   
                   </ul>
