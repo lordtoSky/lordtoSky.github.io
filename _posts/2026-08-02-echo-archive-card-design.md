@@ -6,8 +6,6 @@ description: "一场由三枚书签引发的魔法档案馆小混乱。"
 tags: [Card Design, Game Design, Visual Design]
 ---
 
-# 捣蛋档案馆
-
 ![捣蛋档案馆卡牌](/assets/images/cards/mischief-archive-card.png)
 
 午夜十二点，档案馆的门自己打了个哈欠。

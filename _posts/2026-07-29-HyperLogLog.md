@@ -6,7 +6,6 @@ tags: [Algorithm,Data Processing, Probability]
 math: true
 ---
 
-# HyperLogLog Algorithm
 ## 1. HLL是什么
 一种用于估算集合中“不重复元素数量”的**概率算法**，因为其为概率算法，因此存在误差，更适合对海量数据进行分析。
 ## 2. HLL解决了什么

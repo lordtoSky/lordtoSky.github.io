@@ -5,8 +5,6 @@ date: "2026-08-04 23:45:00"
 description: "理解 PCIe 中逐跳 LCRC 与端到端 ECRC 的分工"
 tags: [Protocol, PCIe, LCRC, ECRC]
 ---
-# 1. PCIe 中 LCRC 与 ECRC 的区别
-
 PCIe 同时使用 LCRC（Link CRC）和 ECRC（End-to-End CRC），但两者不是重复校验同一件事：LCRC 负责**逐跳链路的快速恢复**，ECRC 负责**源 Function 到最终接收 Function 的完整性检测**。本文以传统 Non-FLIT Mode 的 TLP/DLLP 封装为例说明。
 
 ## 1.1 TLP 的传输模型
