@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 500" role="img" aria-labelledby="title desc">
+  <title id="title">PCIe Non-Flit Mode EP bit poisoning mechanism</title>
+  <desc id="desc">A Non-Flit Mode TLP whose EP bit is set in the TLP Header to mark only that TLP payload as poisoned.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#c84b31"/>
+    </marker>
+    <pattern id="poisonPattern" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="14" height="14" fill="#f8d8cf"/>
+      <rect width="5" height="14" fill="#efb19f"/>
+    </pattern>
+  </defs>
+  <style>
+    .title { font: 700 31px Georgia, serif; fill: #17324d; }
+    .subtitle { font: 15px Verdana, sans-serif; fill: #516679; }
+    .label { font: 700 17px Verdana, sans-serif; fill: #17324d; }
+    .small { font: 14px Verdana, sans-serif; fill: #41566b; }
+    .tiny { font: 12px Verdana, sans-serif; fill: #41566b; }
+    .box { stroke: #17324d; stroke-width: 2; }
+    .brace { stroke: #14816f; stroke-width: 4; fill: none; }
+  </style>
+
+  <rect width="1280" height="500" rx="20" fill="#f8f5ed"/>
+  <text x="55" y="57" class="title">NFM · EP bit poisoning</text>
+  <text x="55" y="86" class="subtitle">Poison state is carried inside the header of one specific TLP.</text>
+
+  <rect x="755" y="35" width="450" height="70" rx="12" fill="#fff8ef" stroke="#c84b31" stroke-width="2"/>
+  <text x="980" y="62" text-anchor="middle" class="label" fill="#9d3828">Error known before TLP transmission</text>
+  <text x="980" y="87" text-anchor="middle" class="small">Transaction Layer sets Header.EP = 1</text>
+  <path d="M920 105 C870 125 640 120 502 158" fill="none" stroke="#c84b31" stroke-width="3" marker-end="url(#arrow)"/>
+
+  <path class="brace" d="M270 150 v-17 h650 v17 M270 133 v17 M920 133 v17"/>
+  <text x="595" y="124" text-anchor="middle" class="small" fill="#14816f">End-to-end ECRC coverage</text>
+
+  <g transform="translate(55 170)">
+    <rect class="box" width="75" height="120" rx="8" fill="#e9edf0"/>
+    <text x="37.5" y="55" text-anchor="middle" class="label">STP</text>
+    <text x="37.5" y="79" text-anchor="middle" class="tiny">framing</text>
+
+    <rect class="box" x="75" width="140" height="120" rx="8" fill="#dbe7ef"/>
+    <text x="145" y="50" text-anchor="middle" class="label">Sequence</text>
+    <text x="145" y="76" text-anchor="middle" class="small">Number</text>
+
+    <rect class="box" x="215" width="270" height="120" rx="8" fill="#cdece5"/>
+    <text x="350" y="36" text-anchor="middle" class="label">TLP Header</text>
+    <rect x="286" y="54" width="128" height="45" rx="22" fill="#c84b31" stroke="#8f2e20" stroke-width="2"/>
+    <text x="350" y="83" text-anchor="middle" font-family="Verdana, sans-serif" font-size="20" font-weight="700" fill="#ffffff">EP = 1</text>
+
+    <rect class="box" x="485" width="335" height="120" rx="8" fill="url(#poisonPattern)"/>
+    <text x="652.5" y="50" text-anchor="middle" class="label" fill="#8f2e20">Data Payload</text>
+    <text x="652.5" y="78" text-anchor="middle" class="small" fill="#8f2e20">Poisoned · do not trust</text>
+
+    <rect class="box" x="820" width="135" height="120" rx="8" fill="#f6c66e"/>
+    <text x="887.5" y="50" text-anchor="middle" class="label">ECRC</text>
+    <text x="887.5" y="76" text-anchor="middle" class="tiny">optional</text>
+
+    <rect class="box" x="955" width="135" height="120" rx="8" fill="#b9ddd8"/>
+    <text x="1022.5" y="50" text-anchor="middle" class="label">LCRC</text>
+    <text x="1022.5" y="76" text-anchor="middle" class="tiny">per Link</text>
+
+    <rect class="box" x="1090" width="80" height="120" rx="8" fill="#e9edf0"/>
+    <text x="1130" y="55" text-anchor="middle" class="label">END</text>
+    <text x="1130" y="79" text-anchor="middle" class="tiny">framing</text>
+  </g>
+
+  <rect x="55" y="340" width="1170" height="100" rx="14" fill="#eef4f2" stroke="#9fbcb6" stroke-width="1.5"/>
+  <circle cx="86" cy="375" r="9" fill="#c84b31"/>
+  <text x="108" y="381" class="small">EP marks this TLP only; other TLPs carry their own EP bit.</text>
+  <circle cx="86" cy="411" r="9" fill="#14816f"/>
+  <text x="108" y="417" class="small">EP is a Variant field: ECRC generation and checking treat it as 1, so poisoning does not invalidate ECRC.</text>
+</svg>

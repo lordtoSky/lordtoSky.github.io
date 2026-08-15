@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 340" role="img" aria-labelledby="title desc">
+  <title id="title">PCIe Non-Flit Mode TLP structure and ECRC coverage</title>
+  <desc id="desc">A Non-Flit Mode TLP containing optional Local and End-End prefixes, a header, optional data payload, and an optional four-byte ECRC digest.</desc>
+  <style>
+    .title { font: 700 30px Georgia, serif; fill: #17324d; }
+    .label { font: 700 18px Verdana, sans-serif; fill: #17324d; }
+    .sub { font: 14px Verdana, sans-serif; fill: #41566b; }
+    .note { font: 15px Verdana, sans-serif; fill: #41566b; }
+    .box { stroke: #17324d; stroke-width: 2; }
+    .covered { fill: #cdece5; }
+    .excluded { fill: #e9edf0; }
+    .digest { fill: #f6c66e; }
+    .brace { stroke: #14816f; stroke-width: 4; fill: none; }
+  </style>
+  <rect width="1200" height="340" rx="18" fill="#f8f5ed"/>
+  <text x="55" y="55" class="title">Non-Flit Mode TLP</text>
+
+  <path class="brace" d="M270 104 v-16 h830 v16 M270 88 v16 M1100 88 v16"/>
+  <text x="685" y="80" text-anchor="middle" class="label" fill="#14816f">ECRC calculation coverage</text>
+
+  <g transform="translate(55 120)">
+    <rect class="box excluded" width="215" height="105" rx="8"/>
+    <text x="107.5" y="43" text-anchor="middle" class="label">Local TLP Prefix</text>
+    <text x="107.5" y="70" text-anchor="middle" class="sub">optional</text>
+
+    <rect class="box covered" x="215" width="225" height="105" rx="8"/>
+    <text x="327.5" y="43" text-anchor="middle" class="label">End-End Prefix</text>
+    <text x="327.5" y="70" text-anchor="middle" class="sub">optional</text>
+
+    <rect class="box covered" x="440" width="205" height="105" rx="8"/>
+    <text x="542.5" y="43" text-anchor="middle" class="label">TLP Header</text>
+    <text x="542.5" y="70" text-anchor="middle" class="sub">3 DW or 4 DW</text>
+
+    <rect class="box covered" x="645" width="300" height="105" rx="8"/>
+    <text x="795" y="43" text-anchor="middle" class="label">Data Payload</text>
+    <text x="795" y="70" text-anchor="middle" class="sub">optional, variable length</text>
+
+    <rect class="box digest" x="945" width="145" height="105" rx="8"/>
+    <text x="1017.5" y="43" text-anchor="middle" class="label">ECRC</text>
+    <text x="1017.5" y="70" text-anchor="middle" class="sub">4 B digest</text>
+  </g>
+
+  <rect x="55" y="265" width="18" height="18" rx="3" class="covered box"/>
+  <text x="84" y="280" class="note">Covered by ECRC</text>
+  <rect x="265" y="265" width="18" height="18" rx="3" class="excluded box"/>
+  <text x="294" y="280" class="note">Not covered by ECRC</text>
+  <text x="55" y="316" class="note">The ECRC value is appended as the optional TLP Digest.</text>
+</svg>
