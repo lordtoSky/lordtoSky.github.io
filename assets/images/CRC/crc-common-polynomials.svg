@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 570" role="img" aria-labelledby="title desc">
+  <title id="title">Common CRC generator polynomials</title>
+  <desc id="desc">A table comparing common CRC names, widths, polynomial values, and generator polynomial expressions.</desc>
+  <style>
+    .title { font: 700 30px Georgia, serif; fill: #17324d; }
+    .head { font: 700 17px Verdana, sans-serif; fill: #f8f5ed; }
+    .cell { font: 16px Verdana, sans-serif; fill: #17324d; }
+    .mono { font: 16px Consolas, monospace; fill: #17324d; }
+    .note { font: 14px Verdana, sans-serif; fill: #536579; }
+    .line { stroke: #9dafb2; stroke-width: 1; }
+  </style>
+  <rect width="1200" height="570" rx="18" fill="#f8f5ed"/>
+  <text x="55" y="58" class="title">Common CRC Generator Polynomials</text>
+
+  <g transform="translate(55 90)">
+    <rect width="1090" height="58" rx="8" fill="#17324d"/>
+    <text x="22" y="37" class="head">Name</text>
+    <text x="235" y="37" class="head">Width</text>
+    <text x="350" y="37" class="head">Poly</text>
+    <text x="530" y="37" class="head">Generator polynomial G(x)</text>
+
+    <rect y="58" width="1090" height="70" fill="#dceee9"/>
+    <rect y="128" width="1090" height="70" fill="#f8f5ed"/>
+    <rect y="198" width="1090" height="70" fill="#dceee9"/>
+    <rect y="268" width="1090" height="70" fill="#f8f5ed"/>
+    <rect y="338" width="1090" height="70" fill="#dceee9"/>
+
+    <path class="line" d="M210 0v408 M325 0v408 M500 0v408"/>
+    <path class="line" d="M0 128h1090 M0 198h1090 M0 268h1090 M0 338h1090 M0 408h1090"/>
+
+    <text x="22" y="102" class="cell">CRC-4/ITU</text>
+    <text x="260" y="102" text-anchor="middle" class="cell">4</text>
+    <text x="350" y="102" class="mono">0x3</text>
+    <text x="530" y="102" class="mono">x^4 + x + 1</text>
+
+    <text x="22" y="172" class="cell">CRC-8/MAXIM</text>
+    <text x="260" y="172" text-anchor="middle" class="cell">8</text>
+    <text x="350" y="172" class="mono">0x31</text>
+    <text x="530" y="172" class="mono">x^8 + x^5 + x^4 + 1</text>
+
+    <text x="22" y="242" class="cell">CRC-16/IBM</text>
+    <text x="260" y="242" text-anchor="middle" class="cell">16</text>
+    <text x="350" y="242" class="mono">0x8005</text>
+    <text x="530" y="242" class="mono">x^16 + x^15 + x^2 + 1</text>
+
+    <text x="22" y="312" class="cell">CRC-16/CCITT</text>
+    <text x="260" y="312" text-anchor="middle" class="cell">16</text>
+    <text x="350" y="312" class="mono">0x1021</text>
+    <text x="530" y="312" class="mono">x^16 + x^12 + x^5 + 1</text>
+
+    <text x="22" y="382" class="cell">CRC-32/ISO-HDLC</text>
+    <text x="260" y="382" text-anchor="middle" class="cell">32</text>
+    <text x="350" y="382" class="mono">0x04C11DB7</text>
+    <text x="530" y="370" class="mono">x^32 + x^26 + x^23 + x^22 + x^16 + x^12</text>
+    <text x="530" y="394" class="mono">+ x^11 + x^10 + x^8 + x^7 + x^5 + x^4 + x^2 + x + 1</text>
+  </g>
+
+  <text x="55" y="535" class="note">Poly values omit the implicit highest-order term. Parameters such as Init, RefIn, RefOut, and XorOut also define a complete CRC variant.</text>
+</svg>

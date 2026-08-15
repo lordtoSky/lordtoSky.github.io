@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 610" role="img" aria-labelledby="title desc">
+  <title id="title">CRC modulo-2 division example</title>
+  <desc id="desc">Modulo-2 division of data 10110011 with four appended zeros by generator 11001, producing remainder 0100 and transmitted codeword 101100110100.</desc>
+  <style>
+    .title { font: 700 30px Georgia, serif; fill: #17324d; }
+    .label { font: 700 17px Verdana, sans-serif; fill: #17324d; }
+    .mono { font: 22px Consolas, monospace; fill: #17324d; letter-spacing: 3px; }
+    .xor { font: 22px Consolas, monospace; fill: #b5522c; letter-spacing: 3px; }
+    .result { font: 700 19px Verdana, sans-serif; fill: #126e5f; }
+    .small { font: 15px Verdana, sans-serif; fill: #536579; }
+    .rule { stroke: #17324d; stroke-width: 2; }
+    .arrow { stroke: #126e5f; stroke-width: 3; fill: none; }
+  </style>
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0 0L8 4L0 8Z" fill="#126e5f"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="610" rx="18" fill="#f8f5ed"/>
+  <text x="55" y="58" class="title">Modulo-2 Division: Data 10110011, G(x) = 11001</text>
+
+  <g transform="translate(70 100)">
+    <text x="0" y="28" class="label">Dividend</text>
+    <text x="185" y="28" class="mono">101100110000</text>
+    <text x="610" y="28" class="small">data + four zero bits</text>
+
+    <text x="0" y="76" class="label">Divisor</text>
+    <text x="185" y="76" class="mono">11001</text>
+    <text x="610" y="76" class="small">G(x) = x^4 + x^3 + 1</text>
+
+    <g transform="translate(180 112)">
+      <text x="0" y="24" class="mono">101100110000</text>
+      <text x="-40" y="62" class="xor">^</text>
+      <text x="0" y="62" class="xor">110010000000</text>
+      <path class="rule" d="M0 75h390"/>
+      <text x="0" y="108" class="mono">011110110000</text>
+
+      <text x="-40" y="146" class="xor">^</text>
+      <text x="0" y="146" class="xor">011001000000</text>
+      <path class="rule" d="M0 159h390"/>
+      <text x="0" y="192" class="mono">000111110000</text>
+
+      <text x="-40" y="230" class="xor">^</text>
+      <text x="0" y="230" class="xor">000110010000</text>
+      <path class="rule" d="M0 243h390"/>
+      <text x="0" y="276" class="mono">000001100000</text>
+
+      <text x="-40" y="314" class="xor">^</text>
+      <text x="0" y="314" class="xor">000001100100</text>
+      <path class="rule" d="M0 327h390"/>
+      <text x="0" y="360" class="mono">000000000100</text>
+    </g>
+
+    <path class="arrow" marker-end="url(#arrowhead)" d="M590 430h100"/>
+    <rect x="710" y="392" width="285" height="76" rx="10" fill="#dceee9" stroke="#126e5f" stroke-width="2"/>
+    <text x="735" y="422" class="result">Remainder: 0100</text>
+    <text x="735" y="451" class="result">Codeword: 101100110100</text>
+  </g>
+</svg>
