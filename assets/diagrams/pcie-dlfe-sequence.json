@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "PCIe Data Link Feature Exchange",
+    "output": "assets/diagrams/pcie-dlfe-sequence.html",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [1000, 520]
+  },
+  "participants": [
+    {
+      "id": "port_a",
+      "type": "backend",
+      "label": "Port A",
+      "sublabel": "Data Link Layer"
+    },
+    {
+      "id": "port_b",
+      "type": "backend",
+      "label": "Port B",
+      "sublabel": "Data Link Layer"
+    }
+  ],
+  "segments": [
+    {
+      "from": 150,
+      "to": 218,
+      "label": "发送本端能力"
+    },
+    {
+      "from": 226,
+      "to": 294,
+      "label": "记录对端能力"
+    },
+    {
+      "from": 302,
+      "to": 416,
+      "label": "Feature Ack 确认"
+    }
+  ],
+  "messages": [
+    {
+      "id": "a_initial_feature",
+      "from": "port_a",
+      "to": "port_b",
+      "y": 178,
+      "label": "Feature Supported=A · Ack=0",
+      "variant": "emphasis",
+      "note": "Feature Supported=A；Feature Ack=0"
+    },
+    {
+      "id": "b_initial_feature",
+      "from": "port_b",
+      "to": "port_a",
+      "y": 246,
+      "label": "Feature Supported=B · Ack=0",
+      "variant": "emphasis",
+      "note": "Feature Supported=B；Feature Ack=0"
+    },
+    {
+      "id": "a_feature_ack",
+      "from": "port_a",
+      "to": "port_b",
+      "y": 330,
+      "label": "Feature Supported=A · Ack=1",
+      "variant": "return",
+      "note": "Feature Supported=A；Feature Ack=1"
+    },
+    {
+      "id": "b_feature_ack",
+      "from": "port_b",
+      "to": "port_a",
+      "y": 390,
+      "label": "Feature Supported=B · Ack=1",
+      "variant": "return",
+      "note": "Feature Supported=B；Feature Ack=1"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "port_a",
+      "from": 166,
+      "to": 420,
+      "type": "backend"
+    },
+    {
+      "participant": "port_b",
+      "from": 166,
+      "to": 420,
+      "type": "backend"
+    }
+  ]
+}

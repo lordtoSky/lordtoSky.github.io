@@ -1,0 +1,174 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "PCIe VC 工作原理",
+    "output": "E:/OneDrive/block/assets/diagrams/pcie-vc-working-principle-review.html",
+    "animation": "none",
+    "quality_profile": "showcase",
+    "viewBox": [960, 520],
+    "legend": {
+      "mode": "hidden"
+    }
+  },
+  "stages": [
+    {
+      "label": "根据 TC 分类"
+    },
+    {
+      "label": "独立 VC 队列与 Credit"
+    },
+    {
+      "label": "发送资格与 VC 仲裁"
+    },
+    {
+      "label": "共享物理链路"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "tc_normal",
+      "type": "frontend",
+      "label": "TC0～TC2",
+      "sublabel": "普通流量",
+      "tag": "TC/VC Map",
+      "stage": 0,
+      "row": 0
+    },
+    {
+      "id": "tc_latency",
+      "type": "frontend",
+      "label": "TC3",
+      "sublabel": "低延迟流量",
+      "tag": "TC/VC Map",
+      "stage": 0,
+      "row": 1
+    },
+    {
+      "id": "tc_bulk",
+      "type": "frontend",
+      "label": "TC4～TC7",
+      "sublabel": "批量流量",
+      "tag": "TC/VC Map",
+      "stage": 0,
+      "row": 2
+    },
+    {
+      "id": "vc0",
+      "type": "external",
+      "label": "VC0 队列",
+      "sublabel": "Credit = 0 · 暂停",
+      "tag": "阻塞仅限本 VC",
+      "stage": 1,
+      "row": 0
+    },
+    {
+      "id": "vc1",
+      "type": "messagebus",
+      "label": "VC1 队列",
+      "sublabel": "Credit > 0 · 可发送",
+      "tag": "独立流控",
+      "stage": 1,
+      "row": 1
+    },
+    {
+      "id": "vc2",
+      "type": "database",
+      "label": "VC2 队列",
+      "sublabel": "Credit > 0 · 可发送",
+      "tag": "独立流控",
+      "stage": 1,
+      "row": 2
+    },
+    {
+      "id": "vc0_wait",
+      "type": "external",
+      "label": "保持等待",
+      "sublabel": "等待 UpdateFC",
+      "tag": "不进入仲裁",
+      "stage": 2,
+      "row": 0
+    },
+    {
+      "id": "egress",
+      "type": "cloud",
+      "label": "VC 仲裁器",
+      "sublabel": "从可发送 VC 中选择",
+      "tag": "优先级 / 加权轮询",
+      "stage": 2,
+      "row": 1,
+      "width": 140
+    },
+    {
+      "id": "link",
+      "type": "backend",
+      "label": "Physical Link",
+      "sublabel": "所有 VC 分时复用",
+      "tag": "同一组 Lane",
+      "stage": 3,
+      "row": 1,
+      "width": 140
+    }
+  ],
+  "flows": [
+    {
+      "id": "map_normal",
+      "from": "tc_normal",
+      "to": "vc0",
+      "label": "映射 VC0",
+      "classification": "读取 TC",
+      "variant": "default"
+    },
+    {
+      "id": "map_latency",
+      "from": "tc_latency",
+      "to": "vc1",
+      "label": "映射 VC1",
+      "classification": "读取 TC",
+      "variant": "emphasis"
+    },
+    {
+      "id": "map_bulk",
+      "from": "tc_bulk",
+      "to": "vc2",
+      "label": "映射 VC2",
+      "classification": "读取 TC",
+      "variant": "default"
+    },
+    {
+      "id": "vc0_wait",
+      "from": "vc0",
+      "to": "vc0_wait",
+      "label": "等待",
+      "classification": "无 Credit",
+      "variant": "dashed"
+    },
+    {
+      "id": "vc1_candidate",
+      "from": "vc1",
+      "to": "egress",
+      "label": "候选",
+      "classification": "可绕过 VC0",
+      "variant": "emphasis",
+      "route": "straight",
+      "labelAt": [500, 330]
+    },
+    {
+      "id": "vc2_candidate",
+      "from": "vc2",
+      "to": "egress",
+      "label": "候选",
+      "classification": "参与仲裁",
+      "variant": "default"
+    },
+    {
+      "id": "send_selected",
+      "from": "egress",
+      "to": "link",
+      "label": "发送选中的 TLP",
+      "classification": "复用同一链路",
+      "variant": "emphasis",
+      "labelAt": [638, 314]
+    }
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "PCIe Data Link Feature Exchange",
+    "subtitle": "双方独立进入 DL_Feature；DLLP 可并行或交错发送，下图仅表示一种合法顺序",
+    "output": "E:/OneDrive/block/assets/diagrams/pcie-dlfe-redraw.html",
+    "animation": "none",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [1040, 560],
+    "legend": {
+      "mode": "hidden"
+    },
+    "views": [
+      {
+        "id": "exchange",
+        "label": "能力交换与确认",
+        "focus": ["port_a", "port_b"],
+        "note": "双方分别通告本地能力、保存对端能力，并通过 Feature Ack 完成确认。"
+      }
+    ]
+  },
+  "participants": [
+    {
+      "id": "port_a",
+      "type": "backend",
+      "label": "Port A",
+      "sublabel": "Data Link Layer"
+    },
+    {
+      "id": "port_b",
+      "type": "external",
+      "label": "Port B",
+      "sublabel": "Data Link Layer"
+    }
+  ],
+  "segments": [
+    {
+      "from": 150,
+      "to": 205,
+      "label": "DL_Inactive → DL_Feature"
+    },
+    {
+      "from": 215,
+      "to": 465,
+      "label": "DL_Feature · 交换并确认链路特性"
+    },
+    {
+      "from": 475,
+      "to": 510,
+      "label": "交换成功 → DL_Init"
+    }
+  ],
+  "messages": [
+    {
+      "id": "a_features",
+      "from": "port_a",
+      "to": "port_b",
+      "y": 250,
+      "label": "Feature DLLP · Supported=A · Ack=0",
+      "variant": "emphasis"
+    },
+    {
+      "id": "b_features_ack",
+      "from": "port_b",
+      "to": "port_a",
+      "y": 335,
+      "label": "Feature DLLP · Supported=B · Ack=1",
+      "variant": "return"
+    },
+    {
+      "id": "a_ack",
+      "from": "port_a",
+      "to": "port_b",
+      "y": 420,
+      "label": "Feature DLLP · Supported=A · Ack=1",
+      "variant": "return"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "port_a",
+      "from": 225,
+      "to": 455,
+      "type": "backend"
+    },
+    {
+      "participant": "port_b",
+      "from": 225,
+      "to": 455,
+      "type": "external"
+    }
+  ]
+}
