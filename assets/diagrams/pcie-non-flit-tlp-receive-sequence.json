@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "PCIe Non-Flit TLP接收校验与Ack/Nak时序",
+    "output": "assets/diagrams/pcie-non-flit-tlp-receive-sequence.html",
+    "viewBox": [1120, 680],
+    "animation": "none",
+    "quality_profile": "showcase",
+    "column_fit": "spread"
+  },
+  "participants": [
+    { "id": "peer_tx", "type": "external", "label": "对端发送端", "sublabel": "Tx Data Link" },
+    { "id": "rx_phy", "type": "cloud", "label": "接收物理层", "sublabel": "Framing / Decode" },
+    { "id": "rx_dll", "type": "backend", "label": "接收数据链路层", "sublabel": "TLP Receive Control" },
+    { "id": "lcrc_unit", "type": "security", "label": "LCRC校验单元", "sublabel": "CRC-32" },
+    { "id": "seq_state", "type": "database", "label": "序号状态", "sublabel": "NEXT_RCV_SEQ" },
+    { "id": "rx_tl", "type": "backend", "label": "接收事务层", "sublabel": "TLP Consumer" }
+  ],
+  "segments": [
+    { "from": 150, "to": 252, "label": "公共接收与完整性校验" },
+    { "from": 260, "to": 364, "label": "分支A：LCRC正确且序号符合预期" },
+    { "from": 370, "to": 418, "label": "分支B：LCRC错误" },
+    { "from": 426, "to": 502, "label": "分支C：已接收过的重复序号" },
+    { "from": 510, "to": 588, "label": "分支D：未来序号或序号跳跃" }
+  ],
+  "messages": [
+    { "id": "send_framed_tlp", "from": "peer_tx", "to": "rx_phy", "y": 160, "label": "发送Framed TLP", "variant": "emphasis" },
+    { "id": "deliver_tlp", "from": "rx_phy", "to": "rx_dll", "y": 188, "label": "交付Reserved + Seq + TLP + LCRC", "variant": "default" },
+    { "id": "calculate_lcrc", "from": "rx_dll", "to": "lcrc_unit", "y": 216, "label": "计算LCRC(Reserved + Seq + TLP)", "variant": "security" },
+    { "id": "lcrc_result", "from": "lcrc_unit", "to": "rx_dll", "y": 244, "label": "返回LCRC比较结果", "variant": "return" },
+
+    { "id": "check_expected_seq", "from": "rx_dll", "to": "seq_state", "y": 272, "label": "比较Received_SEQ与NEXT_RCV_SEQ", "variant": "default" },
+    { "id": "expected_seq", "from": "seq_state", "to": "rx_dll", "y": 300, "label": "序号符合预期", "variant": "return" },
+    { "id": "deliver_to_tl", "from": "rx_dll", "to": "rx_tl", "y": 328, "label": "移除DLL字段并交付TLP", "variant": "emphasis" },
+    { "id": "ack_expected", "from": "rx_dll", "to": "peer_tx", "y": 356, "label": "NEXT_RCV_SEQ++；调度Ack[新边界]", "variant": "return" },
+
+    { "id": "crc_mismatch", "from": "lcrc_unit", "to": "rx_dll", "y": 382, "label": "LCRC不匹配", "variant": "security" },
+    { "id": "nak_crc", "from": "rx_dll", "to": "peer_tx", "y": 410, "label": "丢弃TLP；调度Nak[NEXT_RCV_SEQ - 1]", "variant": "dashed" },
+
+    { "id": "check_duplicate", "from": "rx_dll", "to": "seq_state", "y": 438, "label": "检查较旧的Received_SEQ", "variant": "default" },
+    { "id": "duplicate_seq", "from": "seq_state", "to": "rx_dll", "y": 466, "label": "判定为已接收的Replay副本", "variant": "return" },
+    { "id": "ack_duplicate", "from": "rx_dll", "to": "peer_tx", "y": 494, "label": "不重复交付；重新调度当前Ack边界", "variant": "return" },
+
+    { "id": "check_future", "from": "rx_dll", "to": "seq_state", "y": 522, "label": "检查前跳的Received_SEQ", "variant": "default" },
+    { "id": "future_seq", "from": "seq_state", "to": "rx_dll", "y": 550, "label": "判定为未来序号/序号缺口", "variant": "security" },
+    { "id": "nak_gap", "from": "rx_dll", "to": "peer_tx", "y": 578, "label": "丢弃TLP；调度Nak[NEXT_RCV_SEQ - 1]", "variant": "dashed" }
+  ],
+  "activations": [
+    { "participant": "rx_phy", "from": 154, "to": 194, "type": "cloud" },
+    { "participant": "rx_dll", "from": 182, "to": 594, "type": "backend" },
+    { "participant": "lcrc_unit", "from": 210, "to": 250, "type": "security" },
+    { "participant": "seq_state", "from": 266, "to": 306, "type": "database" },
+    { "participant": "rx_tl", "from": 322, "to": 362, "type": "backend" },
+    { "participant": "seq_state", "from": 432, "to": 472, "type": "database" },
+    { "participant": "seq_state", "from": 516, "to": 556, "type": "database" }
+  ]
+}
