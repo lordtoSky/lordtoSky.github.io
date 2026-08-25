@@ -1,0 +1,201 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "PCIe Retry Buffer与Ack反馈延迟",
+    "output": "assets/diagrams/pcie-retry-buffer-ack-feedback.html",
+    "viewBox": [1200, 700],
+    "quality_profile": "showcase",
+    "column_fit": "spread"
+  },
+  "participants": [
+    {
+      "id": "a_dll",
+      "type": "backend",
+      "label": "组件A发送DLL",
+      "sublabel": "TLP发送与Ack处理"
+    },
+    {
+      "id": "a_retry",
+      "type": "database",
+      "label": "A Retry Buffer",
+      "sublabel": "保存未确认TLP"
+    },
+    {
+      "id": "link",
+      "type": "cloud",
+      "label": "Physical Link",
+      "sublabel": "传播、Retimer、SRIS"
+    },
+    {
+      "id": "b_dll",
+      "type": "backend",
+      "label": "组件B接收DLL",
+      "sublabel": "TLP接收与累计确认"
+    },
+    {
+      "id": "b_tx",
+      "type": "messagebus",
+      "label": "B反向发送仲裁",
+      "sublabel": "Ack调度与L0s退出"
+    }
+  ],
+  "segments": [
+    {
+      "from": 150,
+      "to": 274,
+      "label": "正向TLP突发"
+    },
+    {
+      "from": 286,
+      "to": 474,
+      "label": "Ack反馈受阻"
+    },
+    {
+      "from": 486,
+      "to": 648,
+      "label": "Ack返回并释放Buffer"
+    }
+  ],
+  "messages": [
+    {
+      "id": "save_first_tlp",
+      "from": "a_dll",
+      "to": "a_retry",
+      "y": 180,
+      "label": "保存首批TLP副本",
+      "variant": "emphasis"
+    },
+    {
+      "id": "send_write_burst",
+      "from": "a_dll",
+      "to": "link",
+      "y": 216,
+      "label": "A→B：Write Request突发",
+      "variant": "emphasis"
+    },
+    {
+      "id": "deliver_tlps",
+      "from": "link",
+      "to": "b_dll",
+      "y": 252,
+      "label": "传播与流水线后交付TLP",
+      "variant": "default",
+      "note": "Retimer与SRIS可能增加正向路径延迟"
+    },
+    {
+      "id": "ack_latency",
+      "from": "b_dll",
+      "to": "b_tx",
+      "y": 300,
+      "label": "Ack Latency到期：提交累计Ack请求",
+      "variant": "dashed"
+    },
+    {
+      "id": "reverse_busy",
+      "from": "b_tx",
+      "to": "b_dll",
+      "y": 338,
+      "label": "反方向已有TLP/DLLP：Ack等待",
+      "variant": "return"
+    },
+    {
+      "id": "exit_l0s",
+      "from": "b_tx",
+      "to": "link",
+      "y": 376,
+      "label": "B→A：发送FTS并退出L0s",
+      "variant": "dashed",
+      "note": "退出时间由A端Receiver恢复能力影响"
+    },
+    {
+      "id": "buffer_pressure",
+      "from": "a_dll",
+      "to": "a_retry",
+      "y": 414,
+      "label": "Ack未返回：Buffer占用继续增长",
+      "variant": "security"
+    },
+    {
+      "id": "buffer_stall",
+      "from": "a_retry",
+      "to": "a_dll",
+      "y": 452,
+      "label": "Buffer满：暂停新的可靠TLP",
+      "variant": "security"
+    },
+    {
+      "id": "reverse_l0",
+      "from": "link",
+      "to": "b_tx",
+      "y": 490,
+      "label": "B→A方向恢复到L0",
+      "variant": "return"
+    },
+    {
+      "id": "send_ack",
+      "from": "b_tx",
+      "to": "link",
+      "y": 518,
+      "label": "发送Ack DLLP（累计确认）",
+      "variant": "emphasis"
+    },
+    {
+      "id": "ack_arrives",
+      "from": "link",
+      "to": "a_dll",
+      "y": 552,
+      "label": "反向传播后接收并处理Ack",
+      "variant": "return",
+      "note": "包含Link、Retimer、SRIS与本地处理延迟"
+    },
+    {
+      "id": "release_entries",
+      "from": "a_dll",
+      "to": "a_retry",
+      "y": 586,
+      "label": "释放累计确认范围内的条目",
+      "variant": "emphasis"
+    },
+    {
+      "id": "resume_tlps",
+      "from": "a_dll",
+      "to": "link",
+      "y": 617,
+      "label": "恢复发送新的TLP",
+      "variant": "default"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "a_dll",
+      "from": 174,
+      "to": 625,
+      "type": "backend"
+    },
+    {
+      "participant": "a_retry",
+      "from": 174,
+      "to": 594,
+      "type": "database"
+    },
+    {
+      "participant": "link",
+      "from": 210,
+      "to": 560,
+      "type": "cloud"
+    },
+    {
+      "participant": "b_dll",
+      "from": 246,
+      "to": 346,
+      "type": "backend"
+    },
+    {
+      "participant": "b_tx",
+      "from": 294,
+      "to": 526,
+      "type": "messagebus"
+    }
+  ]
+}
