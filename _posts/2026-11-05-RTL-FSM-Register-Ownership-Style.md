@@ -226,3 +226,44 @@ assign tmds_enable         = state_q == RUNNING;
 6. 用专门测试验证失败、超时、降级与输入扰动，而非只验证成功路径。
 
 这套风格尤其适用于 HDMI/显示链路管理、I2C/EDID 事务编排、PLL 重配置、DMA 命令调度以及其他以 `start/done/error` 为基本协议的控制路径。
+
+---
+
+## 7. 按 HDL Compiler for Verilog O-2018.06 复查
+
+本节参考 Synopsys *HDL Compiler for Verilog User Guide* O-2018.06 的“Coding for QoR”“General Verilog Coding Guidelines”“Latches in Combinational Logic”和 FSM inference 章节。这里采用其综合语义与结构建议，不把特定版本工具的推断限制误当作所有 FPGA 工具的语言限制。
+
+### 7.1 采用的规则
+
+| 指南规则 | 本项目中的约束 |
+|---|---|
+| 时序赋值与组合赋值分离 | 状态寄存器和会话数据在 `always_ff` 中更新；`state_d` 只在 `always_comb` 中推导。 |
+| 组合变量必须在所有路径赋值 | 在组合块顶部给出保持/默认值，并在 `case` 中提供 `default`。 |
+| 编译器无法从上层连线可靠推断模块输入为常量 | `LOCAL_VIC_BITMAP`、超时阈值、启动周期和 AVI 源策略使用 parameter，而不是额外常量输入端口。 |
+| 避免 `defparam` | 新增控制/配置路径全部使用实例 parameter；遗留 Altera `altlvds_tx` 分支仍使用 `defparam`，列为待迁移项。 |
+| 可变下标会被综合为选择逻辑 | 对 `bitmap[VIC-1]` 在索引前进行 `VIC=1..128` 范围保护；这首先保证功能安全，也让宽 MUX 的来源明确可见。 |
+| 自动 FSM 识别要求单一状态向量、单时钟、无组合反馈 | `hdmi_link_manager` 只有 `state_q/state_d` 这一组状态向量，命令输出仅由 `state_q` 解码。 |
+
+指南也指出，QoR 不会仅因“换一种书写样式”而自动改善；综合器需要的是明确的设计上下文。因此本项目把真正的静态条件参数化、把运行时模式收敛为原子配置包，并用 reset/握手界定配置何时生效，而不是依赖代码排版获得时序收益。
+
+### 7.2 对当前 HDMI 工程的结论
+
+`hdmi_link_manager`、`timing_config_cdc`、`video_timing_profile` 和 `hpd_filter` 符合上述规则：状态与组合计算分离，组合输出有默认值，VIC 位图访问受保护，且没有 `defparam` 或跨模块层级引用。
+
+以下项目不是功能错误，但应在后续清理时处理：
+
+1. `edid_reader`、`edid_parser` 和 `ddc_i2c_master` 仍采用传统“大型 `*_d` 组合块 + 集中写回”结构。它们符合 HDL Compiler 的时序/组合分离规则，但不完全符合本项目后续采用的“寄存器所有权局部化”维护风格；若再次扩展事务，应逐步按数据类别拆分。
+2. `edid_reader` 同时有事务状态 `state_q` 和命令步骤 `step_q`。功能上合理，但旧版 HDL Compiler 的自动 FSM 提取规则偏好一个状态向量；本工程不依赖该自动提取，综合前仍应查看目标工具的 FSM/inference report。
+3. 遗留 Altera `altlvds_tx` 分支仍用多条 `defparam` 配置原语。该路径不在当前 Xilinx/ModelSim 编译分支内，但与指南的建议不一致；待确定 Altera 原语是否支持参数化实例后，应迁移为 `#(...)` 形式或供应商生成的包装模块。
+4. 上游 `packet_picker` 的 `frame_counter` 时序块中仍存在阻塞赋值。后续修改该模块时应统一为非阻塞赋值，避免时序块中的仿真排序依赖。
+5. `top/top.sv` 是旧 Core 仿真示例，含 `initial` 和仿真 PLL；它不能作为综合用系统顶层。应以 `hdmi_system_top.sv` 作为实际集成顶层，并在综合文件列表中排除该示例。
+6. 当前 RTL 使用 SystemVerilog 的 `package`、`struct packed` 和 `always_ff/always_comb`。这份指南是 Verilog 版资料，适合作为综合建模原则；实际使用 Design Compiler 时，应确保文件按 SystemVerilog 格式读入，并以所安装版本的 SystemVerilog 支持范围为准。
+7. 既有 HDMI Core 中有多处 declaration initializer，例如包调度器状态、串行器移位寄存器和 TMDS 编码累加器。目标 Xilinx FPGA 可以支持部分上电初始化，但这不是可移植的 reset 契约；新模块继续以显式 reset 为准，旧模块在迁移 ASIC 或更换供应商前应逐一确认初始化值是否被复位路径覆盖。
+
+本轮还执行了全 `src/` 文件的静态筛查：未发现 `casex/casez`、跨模块层级引用或非自动 function/task；`packet_assembler` 中的函数已显式声明为 `automatic`。轻量 lint 对所有源文件报告 0 error。它对 SystemVerilog package、struct、属性和实例名会产生已知误报，因此最终以 ModelSim 的全工程编译以及目标综合工具的 elaboration/inference report 为准。
+
+### 7.3 与本次状态机重构的关系
+
+HDL Compiler 指南要求的重点是“顺序逻辑和组合逻辑分离”，而本项目的规则进一步要求“每类会话寄存器有单独的更新所有者”。后者不是工具硬性语法要求，而是为了让模式降级、超时、HPD 中断和重配置事务具有可追踪的寄存器生命周期。
+
+因此，`hdmi_link_manager` 的重构并不声称仅通过拆分 `always` 块提升频率；它首先消除了状态跳转、候选位图更新、VIC 锁存和计数器推进在一个组合锥内的耦合。最终 QoR 仍应由目标 FPGA 的综合、布局布线和静态时序报告确认。
