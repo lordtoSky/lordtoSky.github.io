@@ -111,6 +111,7 @@ hdmi.sv
 | 2026-11-01 16:18 | `88beafb` | 实现 `ddc_i2c_master` 和自检查 testbench | 提供可复用的 DDC/I2C 字节命令引擎，隔离 SDA/SCL 微时序 |
 | 2026-11-02 10:42 | `70e7853` | 实现可配置 `edid_reader` 和 testbench；顶层暴露 `MAX_EDID_BYTES` | 将 EDID 事务、字节计数、扩展块判断与 I2C 位时序分离 |
 | 2026-11-02 10:57 | `88bf32e` | 将 `edid_reader` 拆分为命令译码、控制状态和数据路径 | 避免一个过大的组合块同时承担所有职责，便于后续时序收敛和维护 |
+| 2026-11-02 12:18 | `0cd4069` | 实现 512×8 `edid_memory`、同步读有效标志和 testbench | 用可推断为 Block RAM 的数组实现原始 EDID 存储，明确 parser 的一拍读延迟接口 |
 
 ---
 
@@ -321,6 +322,7 @@ TMDS PHY 保持关闭/高阻
 | `hpd_filter_tb` | 高/低去抖、短脉冲拒绝、稳定连接和稳定断开 |
 | `ddc_i2c_master_tb` | START/STOP、写 ACK/NACK、重复 START、读 ACK/NACK、clock stretching、超时、9 时钟恢复 |
 | `edid_reader_tb` | 有扩展块时读取 256 字节、无扩展块时读取 128 字节、内存地址/数据顺序、地址 NACK 异常退出 |
+| `edid_memory_tb` | 512 B 地址空间的 Block 0~3 边界读写、同步读一拍延迟和 `rd_valid` 相位 |
 
 近期验证结果：
 
@@ -338,10 +340,128 @@ TMDS PHY 保持关闭/高阻
 | `hpd_filter` | 已实现并验证 | 异步同步与非对称高低去抖 |
 | `ddc_i2c_master` | 已实现并验证 | 100 kHz 参数化字节命令 I2C/DDC 引擎 |
 | `edid_reader` | 已实现并验证 | 基础块与首个扩展块的可配置读取 |
-| `edid_memory` | 骨架 | 需最终确定存储实现和读延迟语义 |
+| `edid_memory` | 已实现并验证 | 512×8 单时钟简单双端口同步 BRAM，读端使用 `rd_en/rd_valid` |
 | `edid_parser` | 骨架 | 需校验 EDID 并解析 DTD/CTA VIC/音频能力 |
 | `hdmi_mode_selector` | 骨架 | 需将本地目标模式与 sink 能力求交集 |
 | `hdmi_link_manager` | 骨架 | 需串联 HPD、EDID、模式选择、PLL 和 TMDS 使能 |
 | `hdmi_phy_xilinx` | 骨架 | 需替换为目标板卡的差分 I/O 与约束实现 |
 
 下一阶段优先实现 `edid_parser`：先验证基础 EDID Header、版本和 checksum，再提取 Detailed Timing Descriptor；随后支持 CTA-861 扩展块中的 Video Data Block、音频能力与首选 VIC。完成后，`hdmi_mode_selector` 和 `hdmi_link_manager` 才能依据真实显示器能力安全地释放 HDMI Core 和 TMDS PHY。
+
+---
+
+## 11. 模块功能、设计细节与验证重点
+
+这一节作为当前 RTL 的实现清单。重点不是重复模块名称，而是说明每个模块负责什么、哪些行为被刻意排除，以及测试真正检查了什么。
+
+### 11.1 `core/*`：既有 HDMI 发送核心
+
+| 项目 | 内容 |
+|---|---|
+| 功能 | 在 `clk_pixel` 域接收 `rgb`，内部生成视频/控制/data island 时序，编码为 TMDS，并在 `clk_pixel_x5` 域串行化 |
+| 输入约束 | 正常可见区按每个 `clk_pixel` 提供一个 RGB 像素；消隐区无需提供特殊像素值 |
+| 输出 | `tmds[2:0]`、`tmds_clock`、坐标 `cx/cy` 和帧/可见区尺寸 |
+| 关键细节 | `packet_picker` 调度 HDMI 辅助数据包，不负责像素流；`packet_assembler` 负责组装数据包和相关保护字段 |
+| 验证重点 | 原始 `top_tb`、音频与 SPD testbench 覆盖上游核心功能；本项目没有修改其算法实现 |
+
+### 11.2 `hpd_filter`：连接稳定性判断
+
+| 项目 | 内容 |
+|---|---|
+| 功能 | 把异步 HPD 转换为单一的同步电平条件 `hpd_connected` |
+| 设计 | 两级同步器；高、低电平分别采用独立的连续周期阈值；反向电平立即清零计数 |
+| 默认值 | 100 MHz 下高电平 10 ms 建立连接，低电平 1 ms 判定断开 |
+| 接口取舍 | 删除 `hpd_rise/hpd_fall` 脉冲，避免下游漏采样并减少不必要连线 |
+| 验证重点 | 短高脉冲拒绝、稳定高连接、短低脉冲拒绝、稳定低断开 |
+
+### 11.3 `ddc_i2c_master`：DDC 位级与字节级引擎
+
+| 项目 | 内容 |
+|---|---|
+| 功能 | 将字节命令转换为 DDC/I2C 的 SDA/SCL 波形 |
+| 命令 | START、STOP、WRITE_BYTE、READ_BYTE_ACK、READ_BYTE_NAK、BUS_RECOVERY |
+| 接口 | `cmd_valid/cmd_ready` 接收一条命令；`cmd_done` 表示完成；读操作用 `rx_valid/rx_data` 返回数据；写操作用 `ack_received` 返回 ACK 状态 |
+| 电气约束 | SDA/SCL 只允许输出 `0` 或 `Z`，高电平由板级上拉提供；不可主动驱动 `1` |
+| 健壮性 | 释放 SCL 后读取实际线路电平；支持 clock stretching、超时错误和 9 时钟恢复 |
+| 验证重点 | START/STOP、写 ACK/NACK、重复 START、读操作的 ACK/NACK、有限延展、延展超时、恢复脉冲 |
+
+### 11.4 `edid_reader`：EDID 事务与线性字节搬运
+
+| 项目 | 内容 |
+|---|---|
+| 功能 | 发起 EDID 地址/偏移/重复 START/读数据/STOP 事务，并将每个返回字节写入 EDID RAM |
+| 分层边界 | 不直接控制 SDA/SCL；不解释 VIC、DTD 或音频字段；这些分别由 `ddc_i2c_master` 和后续 `edid_parser` 负责 |
+| 控制结构 | 5 个主状态 `IDLE/ISSUE/WAIT/COMPLETE/FAIL`，配合 `STEP_*` 枚举选择当前 DDC 命令 |
+| 读取长度 | `MAX_EDID_BYTES` 当前限制为 1~256；先读基础块，在 `EDID[126]` 指示扩展块后再读取至配置上限 |
+| 异常处理 | 地址 NACK、读命令错误或 HPD 掉线会中止正常步骤，并尝试发送 STOP |
+| 验证重点 | 有扩展块时读取 256 B、无扩展块时读取 128 B、字节写地址/数据顺序、地址 NACK 异常退出 |
+
+### 11.5 `edid_memory`：512×8 Block RAM 存储
+
+| 项目 | 内容 |
+|---|---|
+| 功能 | 保存原始 EDID 字节，并向 parser 提供同步读端口 |
+| 实现 | `logic [7:0] memory [0:511]` 数组，带 `(* ram_style = "block" *)` 属性，目标为 Xilinx 单时钟简单双端口 BRAM 推断 |
+| 写端 | `wr_en/wr_addr/wr_data`，由 `edid_reader` 在 `clk_sys` 域写入 |
+| 读端 | `rd_en/rd_addr` 请求；下一拍 `rd_valid=1` 且 `rd_data` 有效 |
+| 复位策略 | 不复位 RAM 数组；HPD/读取状态有效性由上游逻辑管理，避免破坏 BRAM 推断 |
+| 同址竞争 | 当前流程要求 reader 完成后 parser 才开始，因此不依赖 read-first/write-first/no-change 的器件相关语义 |
+| 验证重点 | `0x000`、`0x07F`、`0x080`、`0x100`、`0x1FF` 地址读写；一拍读延迟和 `rd_valid` 相位 |
+
+#### 512 B 地址边界与未来 E-DDC 溢出保护
+
+RAM 端口是 9 bit，因此合法范围固定为：
+
+```text
+0x000 ~ 0x1FF
+```
+
+当前 testbench 验证了 `0x1FF` 最高合法地址，但无法在 RAM 模块内检测 `0x200`：第 10 位会在进入 9 bit 端口前丢失，最终表现为访问 `0x000`。当前 `edid_reader` 最大只写 256 B，即 `0x000~0x0FF`，不会触发该风险。
+
+未来加入 E-DDC Segment Pointer、读取超过 256 B 时，地址生成器必须先使用更宽的逻辑地址比较：
+
+```systemverilog
+logic [9:0] logical_byte_index;
+
+if (logical_byte_index < 10'd512)
+    memory_wr_addr = logical_byte_index[8:0];
+else
+    read_error = 1'b1;
+```
+
+届时必须补充两项测试：`0x1FF` 可读写，`0x200` 被拒绝且不得覆盖 `0x000`。
+
+### 11.6 尚未实现模块的设计前提
+
+| 模块 | 进入实现前必须遵守的前提 |
+|---|---|
+| `edid_parser` | 必须按 `rd_en` 发地址、等待一拍 `rd_valid`，不能假定组合读；仅在 EDID 读取成功后运行 |
+| `hdmi_mode_selector` | 必须以 parser 输出的 sink 能力为依据，并保留本地目标模式不可用时的失败/回退策略 |
+| `hdmi_link_manager` | 必须在 HPD 掉线时取消 DDC/解析流程、保持 HDMI Core reset、关闭 TMDS PHY |
+| `hdmi_phy_xilinx` | 必须由具体 FPGA、I/O Bank 电压和板级 HDMI 电路确定 OBUFDS/约束，不能将通用占位逻辑直接用于量产硬件 |
+
+---
+
+## 12. 2026-11-02：EDID Parser 完成第一版
+
+`edid_parser` 已从接口骨架替换为同步 RAM 读取和能力解码实现。设计保持控制、存储器命令、EDID/CTA 字节解码三个组合逻辑块独立，并由单个 `always_ff` 保存状态和结果寄存器；避免把完整解析流程堆入一个时序块。
+
+本版本的输入约束与输出语义如下：
+
+- Parser 使用 `rd_en/rd_addr` 发起一次 BRAM 读取，并只在下一拍 `rd_valid` 有效时消耗 `rd_data`；因此不依赖 RAM 的组合读实现。
+- `edid_reader` 额外输出 `edid_byte_count`。Parser 在收到少于 128 B 的基础块、或声明有扩展块却不足 256 B 时完成并置 `parse_error`，不会把旧 RAM 内容误解为有效 EDID。
+- 校验基础块八字节 Header 和基础块/首个扩展块的 8 bit checksum；`done` 表示解析结束，`edid_valid` 与 `parse_error` 表示结果，二者不会因错误路径而让下游永久等待。
+- 当首个扩展块为 CTA (`0x02`) 时，解析 Video Data Block，生成 128 bit VIC 位图，并以 native SVD 优先、首个 SVD 回退的规则给出 `preferred_vic`。
+- 解析 Audio Data Block 中 LPCM、至少双声道的 SAD，输出 `lpcm_2ch_supported` 和 CTA 定义的 7 bit 采样率掩码。当前版本不从 DTD 反推 VIC，也不处理第二个及其后的扩展块；这些是后续扩展点，而非静默错误。
+
+验证新增 `edid_parser_tb`：构造一个 Header/checksum 合法的 256 B EDID，包含 native VIC 4、VIC 16 和 LPCM 2ch 44.1/48 kHz CTA 数据块，检查全部并行输出；随后篡改 Header，确认模块拒绝数据并报告 `parse_error`。同时扩展 `edid_reader_tb`，验证成功读取时 `edid_byte_count` 分别为 256 和 128。
+
+---
+
+## 13. 2026-11-02：Link Manager 会话控制与 PLL 降级
+
+`hdmi_link_manager` 已实现为 `clk_sys` 域的两段式会话状态机。它依次发起 EDID 读取、解析、候选模式装载、模式选择、PLL 重配置、核心启动和 TMDS 使能；HPD 失效在任意状态均覆盖正常流程，立即关闭 TMDS、保持核心复位并清空会话状态。
+
+候选模式使用会话级 `available_vic_bitmap`。在 Parser 成功后装载为 `LOCAL_VIC_BITMAP & supported_vic_bitmap`；PLL 配置错误、锁定失败或超时会清除当前 `selected_vic` 对应 bit 并重新选择。该失败记录只在本次 HPD 会话有效，重新插拔并完成新的 EDID 解析后自动恢复。Manager 向未来 PLL 模块提供 `pll_reconfig_start/pll_target_vic`，并等待 `pll_reconfig_done/pll_reconfig_error/pixel_pll_locked`，不再把单独的 `locked` 电平误当成一次配置完成。
+
+新增 `hdmi_link_manager_tb` 覆盖：VIC 16 首先被选择但 PLL 失败、其 bit 被清除、自动降级至 VIC 4 并进入 TMDS 输出；随后 HPD 失效，验证核心复位、TMDS 关闭和候选 bitmap 清零。ModelSim 编译全工程无 error（仅保留既有 core 的 SVCHK warning）。
