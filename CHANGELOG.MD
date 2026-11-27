@@ -28,6 +28,21 @@
 
 ---
 
+## 2026-11-27 · 修复自定义 404 与上线验证
+
+- 内容：`404.html` 增加 `permalink: /404.html`。此前 `permalink: pretty` 把它输出成 `/404/`，GitHub Pages 找不到根目录的 `404.html`，线上缺失页面显示的是 GitHub 默认 404，而不是本站自定义页。
+- 内容：线上验证 2026-11-27 两次推送（`0ce74e3`、`3bcc6b0`）均构建成功：`/archive/` 已出现 2026-11-05《RTL 状态机重构》；首页每页 5 篇（Page 1 of 5）；站点标题/作者/导航/页脚/搜索域名已切换为本站；文章页无 Disqus 脚本；`/CHANGELOG/`、`/CHANGELOG.MD`、`/Gemfile`、`/serve.bat`、`/tmp/*`、`/2018/04/29/…` 均 404；`sitemap.txt` 过滤后共 32 条（8 页面 + 24 文章），域名全部为 `https://lordtosky.github.io`。
+- 遗留：`/assets/css/style.css` 仍返回 200（旧主题 CSS，模板无引用，每次部署重新出现，已从 sitemap 过滤，可忽略）。
+- 文件：`404.html`、`README.md`、`CHANGELOG.MD`
+- 验证：推送后请求一个不存在的 URL，确认返回本站自定义 404（含 `site:lordtosky.github.io` 搜索链接）；同时复查 `/404.html` 为 200。
+- 提交：见本次推送
+
+## 2026-11-27 · 修复文章元数据与时间
+
+- 内容：为两篇 DLL 文章和体系结构文章补齐 `layout`、`title`、`date`、`tags`；为空的 Flit Mode 重传文章补元数据并设置 `published: false`，避免生成空页面；将 RTL 状态机文章的 16:00 标明为北京时间 `+0800`。
+- 文件：`_posts/2026-08-15-DLL概述.md`、`_posts/2026-08-15-DLL概述-LAPTOP-TENF55MD.md`、`_posts/2026-08-28-PCIE-FM-Retransmission.md`、`_posts/体系结构/2026-11-16-体系结构基础知识.md`、`_posts/2026-11-05-RTL-FSM-Register-Ownership-Style.md`、`CHANGELOG.MD`。
+- 验证：检查文章开头元数据、日期与文件名一致性及 `git diff --check`；本机未安装 Ruby/Bundler，未运行 Jekyll 构建。
+
 ## 2026-11-27 · 补充修复：sitemap 过滤与残留样式
 
 - 内容：`sitemap.txt` 改为只输出 HTML 页面与文章，跳过 `.xml` / `.txt` / `.css` 页面（此前会把 `atom.xml`、`rss.xml`、`sitemap.txt` 自身，以及一个残留的 `/assets/css/style.css` 写进 sitemap）。

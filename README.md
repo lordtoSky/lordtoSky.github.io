@@ -388,7 +388,7 @@ git push origin main
 - `/CHANGELOG/` 能打开，但源仓库里并没有这个页面（只有 `CHANGELOG.MD` 原文）——来自 `_site/CHANGELOG/index.html`；
 - `/assets/css/style.css` 能访问，但 `assets/css/` 下没有这个文件——来自旧 `_site`。
 
-**2026-11-27 已处理**：`git rm -r --cached _site` 停止跟踪，并在 `.gitignore` 里加入 `_site/` 与 Jekyll 缓存目录；下次构建后这些幽灵页面应消失（以线上验证为准）。本地目录仍然保留，方便查看旧产物，只是不再进入仓库。
+**2026-11-27 已处理**：`git rm -r --cached _site` 停止跟踪，并在 `.gitignore` 里加入 `_site/` 与 Jekyll 缓存目录。推送后实测：`/CHANGELOG/`、`/2018/04/29/…`、`/Gemfile`、`/serve.bat`、`/tmp/*` 等旧产物均已 404；**但 `/assets/css/style.css` 仍然 200**——每次部署都会以新的修改时间重新出现，模板里没有任何引用，配置里也已 `exclude`，推测是 GitHub Pages 对 `assets/` 旧资源的保留策略。该文件已从 `sitemap.txt` 过滤，留在线上不影响页面，可忽略。本地 `_site/` 目录仍保留，方便查看旧产物，只是不再进入仓库。
 
 ### 6.4 主题作者默认值（2026-11-27 已修正）
 
@@ -400,6 +400,8 @@ git push origin main
 | `_config.yml` `title` / `tagline` / `author` | Soot Spirits / 主题 tagline / Abhishek Nagekar | `lordtoSky` / `PCIe · RTL · 体系结构 · 随笔` / `lordtoSky` |
 | `_layouts/default.html` 导航与页脚 | `github.com/abhn`、abhn 的 LinkedIn / 邮箱 | `github.com/lordtoSky`、`1979968187@qq.com`（LinkedIn 已移除） |
 | `index.html` | 硬编码 `disqus_shortname = 'nagekar'` 的评论计数 | 已删除 |
+| `404.html` | 没有固定 `permalink`，`permalink: pretty` 使其产出 `/404/`，GitHub Pages 找不到自定义 404 | 增加 `permalink: /404.html` |
+| `sitemap.txt` | 会把 `atom.xml`、`rss.xml`、`sitemap.txt` 本身等非 HTML 页面写进站点地图 | 过滤 `.xml` / `.txt` / `.css`，只留页面与文章 |
 | `404.html` | 指向主题作者 Google CSE 的搜索链接 | 改为本站 Google `site:` 搜索 |
 | `_includes/head.html` | 无 description / canonical / OG，RSS 链接重复 | 已补 description、canonical、Open Graph，去重 |
 | `_config.yml` `paginate` | `1`（每页 1 篇） | `5` |
@@ -422,7 +424,9 @@ git push origin main
 
 ### 6.6 修复状态与后续优先级
 
-**2026-11-27 已完成**：域名、搜索、评论归属、页脚/导航、站点标题、`exclude` 收口、首页分页、`_site` 停止跟踪、SEO meta，并已推送上线。
+**2026-11-27 已完成**：域名、搜索、评论归属、页脚/导航、站点标题、`exclude` 收口、首页分页、`_site` 停止跟踪、SEO meta、自定义 404、sitemap 过滤，并已推送上线。
+
+**推送后线上验证**：Pages 构建成功；`/archive/` 出现 2026-11-05 文章；首页每页 5 篇（Page 1 of 5）；`/sitemap.txt` 共 32 条（8 个页面 + 24 篇文章）且域名均为 `https://lordtosky.github.io`；文章页无 Disqus 脚本；`/CHANGELOG/`、`/Gemfile`、`/tmp/*` 等已 404。
 
 后续：
 
