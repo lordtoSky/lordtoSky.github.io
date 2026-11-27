@@ -28,6 +28,14 @@
 
 ---
 
+## 2026-11-27 · 补充修复：sitemap 过滤与残留样式
+
+- 内容：`sitemap.txt` 改为只输出 HTML 页面与文章，跳过 `.xml` / `.txt` / `.css` 页面（此前会把 `atom.xml`、`rss.xml`、`sitemap.txt` 自身，以及一个残留的 `/assets/css/style.css` 写进 sitemap）。
+- 内容：`exclude` 追加 `assets/css/style.css`，尝试清除该残留样式（内容为旧主题的 normalize/primer CSS，模板里并无引用）。
+- 文件：`sitemap.txt`、`_config.yml`
+- 验证：推送后检查 `/sitemap.txt` 是否只含 HTML 页面与文章；检查 `/assets/css/style.css` 是否变为 404（若仍存在，说明它来自构建缓存或 CDN，而不是本仓库文件）。
+- 提交：本次推送
+
 ## 2026-11-27 · 修复与上线
 
 - 内容：把主题作者默认值换成本站信息——`production_url` 改为 `https://lordtosky.github.io`；`title` / `tagline` / `author` 改为 `lordtoSky`；导航与页脚 GitHub 改为 `lordtoSky`，邮箱改为 `1979968187@qq.com`，移除 LinkedIn；404 页搜索链接改为本站 Google `site:` 搜索。

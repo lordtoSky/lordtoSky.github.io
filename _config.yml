@@ -19,6 +19,7 @@ exclude:
   - "AXI2CHI_OrderBuffer_方案权衡.pptx"
   - "make_axi2chi_design_review_slide.py"
   - "make_axi2chi_orderbuffer_slide.py"
+  - "assets/css/style.css"
 highlighter: rouge
 
 # Themes are encouraged to use these universal variables
