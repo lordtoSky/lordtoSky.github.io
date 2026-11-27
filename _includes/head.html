@@ -17,7 +17,14 @@
 
   <!-- RSS -->
   <link rel="alternate" type="application/rss+xml" title="RSS" href="/atom.xml">
-  <link rel="alternate" type="application/rss+xml" title="RSS" href="/atom.xml">
+
+  <!-- SEO -->
+  <meta name="description" content="{{ page.description | default: site.tagline | strip_html | escape }}">
+  <link rel="canonical" href="{{ site.production_url }}{{ page.url }}">
+  <meta property="og:title" content="{{ page.title | default: site.title | escape }}">
+  <meta property="og:description" content="{{ page.description | default: site.tagline | strip_html | escape }}">
+  <meta property="og:url" content="{{ site.production_url }}{{ page.url }}">
+  <meta property="og:type" content="{% if page.layout == 'post' %}article{% else %}website{% endif %}">
 
   <title>
     {% if page.title == "Home" %}

@@ -19,7 +19,7 @@ txtFile.onreadystatechange = function () {
         if (txtFile.status === 200) {
             allText = txtFile.responseText;
             lines = txtFile.responseText.split("\n");
-            randLine = lines[Math.floor((Math.random() * lines.length) + 1)];
+            randLine = lines[Math.floor(Math.random() * lines.length)];
             document.getElementById('quote').innerHTML = randLine ||
                 "Intelligence is the ability to adapt to change."; // fallback quote
         }
@@ -35,6 +35,6 @@ document.getElementById("search-text").addEventListener("keydown", function(e) {
 function searchHandler() {
     var searchInput = document.getElementById('search-text');
     var text = searchInput.value;
-    // add site:example.com in the placeholder
-    window.location.href = "https://www.google.com/search?q=site:nagekar.com " + text;
+    // 站内搜索：限定在本站域名下
+    window.location.href = "https://www.google.com/search?q=site:lordtosky.github.io " + text;
 }

@@ -1,23 +1,35 @@
 # This is the default format.
 # For more see: http://jekyllrb.com/docs/permalinks/
 permalink: pretty
-paginate: 1
+paginate: 5
 paginate_path: "/blog/page:num/"
 
-exclude: [".rvmrc", ".rbenv-version", "README.md", "Rakefile", "changelog.md"]
+exclude:
+  - ".rvmrc"
+  - ".rbenv-version"
+  - "README.md"
+  - "CHANGELOG.MD"
+  - "Rakefile"
+  - "Gemfile"
+  - "Gemfile.lock"
+  - "serve.bat"
+  - "tmp"
+  - "_site"
+  - "AXI2CHI_OrderBuffer_Design_Review.pptx"
+  - "AXI2CHI_OrderBuffer_方案权衡.pptx"
+  - "make_axi2chi_design_review_slide.py"
+  - "make_axi2chi_orderbuffer_slide.py"
 highlighter: rouge
 
 # Themes are encouraged to use these universal variables
 # so be sure to set them if your theme uses them.
 #
-title : Soot Spirits
-tagline: Code, Science, Philosophy, Humor
+title : lordtoSky
+tagline: PCIe · RTL · 体系结构 · 随笔
 author :
-  name : Abhishek Nagekar
-  email : abhishek@nagekar.com
-  github : abhn
-  twitter : abhisheknagekar
-  feedburner : AbhishekN
+  name : lordtoSky
+  email : 1979968187@qq.com
+  github : lordtoSky
 
 # The production_url is only used when full-domain names are needed
 # such as sitemap.txt
@@ -27,7 +39,7 @@ author :
 # Else if you are pushing to username.github.io, replace with your username.
 # Finally if you are pushing to a GitHub project page, include the project name at the end.
 #
-production_url : https://www.nagekar.com
+production_url : https://lordtosky.github.io
 
 # All Jekyll-Bootstrap specific configurations are namespaced into this hash
 #
@@ -82,9 +94,11 @@ JB :
   # Set 'provider' to false to turn commenting off globally.
   #
   comments :
-    provider : disqus
+    # 暂时关闭评论：主题默认值为别人的 Disqus 站点。
+    # 启用时把 provider 改回 disqus，并填入自己在 disqus.com 注册的 short_name。
+    provider : false
     disqus :
-      short_name : nagekar
+      short_name : ""
 
   # Settings for analytics helper
   # Set 'provider' to the analytics provider you want to use.
