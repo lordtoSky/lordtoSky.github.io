@@ -12,7 +12,7 @@
 | 主题 | [Soot Spirits](https://sootspirits.github.io)（Jekyll 主题 + Bulma CSS）+ 本地定制 |
 | 站点标题 | `lordtoSky`（`_config.yml` 的 `title`），副标题 `PCIe · RTL · 体系结构 · 随笔` |
 | 文章规模 | 工作区 27 个带日期前缀的文章文件（含 1 篇空文章 `published: false`、1 篇未跟踪）；线上 25 篇 |
-| 首页分页 | 每页 5 篇（`_config.yml` 中 `paginate: 5`，24 篇约 5 页） |
+| 首页 | 按主题目录分组的文章索引（不分页；`_config.yml` 已移除 `paginate`） |
 | 评论 | 已关闭（`provider: false`）；要启用就在 `_config.yml` 填自己在 disqus.com 的 shortname |
 | 搜索 | 页头搜索走 Google `site:lordtosky.github.io` |
 | 统计 | 未接入任何统计代码 |
@@ -79,22 +79,23 @@ git push origin main
 
 ```text
 D:\onedrive\block\
-├─ _posts\                 # 文章源文件（唯一内容入口；可含子目录）
-│  ├─ 2026-11-02-xxx.md
-│  └─ rtl优化\             # 子目录仅用于组织；无日期前缀 = 不会发布
+├─ _posts\                 # 文章源文件（唯一内容入口）
+│  ├─ SystemVerilog\        # 首页按这些主题目录分组
+│  ├─ PCIe\  RTL\  HDMI\ 体系结构\ 算法\ 随笔\ 其他\
+│  └─ rtl优化\ axi2chi_orderbuffer\   # 未发布的草稿目录
 ├─ _drafts\                # 草稿目录（当前不存在）
 ├─ _layouts\               # default / page / post 三套布局
 ├─ _includes\              # head、分页、JB 系列辅助模板（tags/archive/评论等）
 ├─ _plugins\               # 本地 Jekyll 插件（GitHub Pages safe mode 下不加载）
 ├─ assets\                 # css / js / images / diagrams 静态资源
-├─ index.html              # 首页（分页文章列表）
+├─ index.html              # 首页（按目录分组的索引）
 ├─ archive.html            # 归档页 /archive
 ├─ tags.html               # 标签页 /tags
 ├─ 404.html                # 404 页
 ├─ atom.xml / rss.xml      # 订阅源（使用 production_url）
 ├─ sitemap.txt             # 纯文本站点地图（使用 production_url）
 ├─ quotes.txt              # 页头随机语录（前端 JS 拉取）
-├─ _config.yml             # 站点配置（标题/域名/分页/评论/exclude）
+├─ _config.yml             # 站点配置（标题/域名/评论/exclude）
 ├─ Gemfile / Gemfile.lock  # 本地依赖（Pages 构建不使用仓库的 Gemfile）
 ├─ serve.bat               # Windows 本地预览脚本
 ├─ Rakefile                # 主题遗留脚本（已被 exclude，不发布）
@@ -108,6 +109,7 @@ D:\onedrive\block\
 | 路径 | 作用 | 是否出现在线上 |
 |---|---|---|
 | `_posts/**/*.md`（带日期前缀） | 文章 | ✅ 是 |
+| `_posts/主题目录/` | 首页分组依据（目录名即分组）；目录名不进 URL | ✅ 是 |
 | `_posts/` 子目录中的无日期文件 | 不会被 Jekyll 读取 | ❌ 否 |
 | `_layouts/` `_includes/` | 模板，生成 HTML | 仅产物 |
 | `_plugins/` | 本地插件（`ruby_compat.rb`、`debug.rb`） | ❌ Pages 不加载 |
@@ -126,8 +128,9 @@ D:\onedrive\block\
 **关键机制说明**
 
 - **`_posts` 会递归读取**：`_posts/子目录/2026-11-14-xxx.md` 会被当作文章，但文件名仍必须带日期前缀。
+- **目录决定首页分组**：首页索引按 `_posts/` 下的主题目录（SystemVerilog / PCIe / 体系结构 / RTL / HDMI / 算法 / 随笔 / 其他）分组展示；目录名**不会**进入 URL，把文章移到别的主题目录不会改变链接。
 - **没有日期前缀 = 完全不读取**：例如 `_posts/rtl优化/动态时钟axi配置.md` 目前不会成为文章。
-- **带日期但没有 front matter 也会发布**：Jekyll 会用文件名推断标题/日期（例如线上的 `2026-08-28-PCIE-FM-Retransmission.md` 是空文件，仍生成了一个文章页）。这种“裸文章”无法设置 tags/description，不要这样写。
+- **带日期但没有 front matter 也会发布**：Jekyll 会用文件名推断标题/日期（例如线上曾出现的 `_posts/PCIe/2026-08-28-PCIE-FM-Retransmission.md` 空文件）。这种“裸文章”无法设置 tags/description，不要这样写。
 - **文件名决定 URL 的一部分**（`permalink: pretty`）：`/年/月/日/文件名去掉日期前缀/`。改文件名或改 `date` 都会改 URL，旧链接会 404。
 
 ---
@@ -314,7 +317,7 @@ date: 2026-11-27 10:00:00 +0800  # 或显式写明时区
 ### 4.6 Pages 的限制（知道这些能少踩坑）
 
 - **safe mode**：不执行 `_plugins/`；仓库 `Gemfile` 也不会被用于构建，Pages 用自带的 `github-pages` 版本。
-- 只支持 whitelist 插件；分页能用是因为 `github-pages` 自带 `jekyll-paginate`。
+- 只支持 whitelist 插件；首页已改为分组索引，不再依赖 `jekyll-paginate`（`_config.yml` 里的 `paginate` 已移除）。
 - 单次构建有时长/仓库大小限制；大体积 PPTX/图片尽量压缩（目前仓库里已有 13 MB 的 PPTX）。
 - 没有服务端逻辑、不能跑脚本；评论/统计/搜索都靠前端第三方 JS。
 
@@ -379,7 +382,7 @@ git push origin main
 |---|---|---|
 | 已推送 | `561135f` `20a120f` `3377514` | 修改 HDMI 日志；新增 AXI 握手/动态时钟笔记 |
 | 仍为本地修改 | `_posts/rtl优化/动态时钟axi配置.md` | 内容改动（该文件无日期前缀，本就不会发布） |
-| 仍未跟踪 | `_posts/体系结构/2026-11-16-体系结构基础知识.md` | 有日期前缀但无 front matter；提交前请补 front matter |
+| 仍未跟踪 | `_posts/体系结构/2026-11-16-体系结构基础知识.md` | 已补 front matter；提交后会作为「体系结构」文章发布 |
 
 ### 6.3 `_site/` 误提交（已修正）
 
@@ -404,9 +407,9 @@ git push origin main
 | `sitemap.txt` | 会把 `atom.xml`、`rss.xml`、`sitemap.txt` 本身等非 HTML 页面写进站点地图 | 过滤 `.xml` / `.txt` / `.css`，只留页面与文章 |
 | `404.html` | 指向主题作者 Google CSE 的搜索链接 | 改为本站 Google `site:` 搜索 |
 | `_includes/head.html` | 无 description / canonical / OG，RSS 链接重复 | 已补 description、canonical、Open Graph，去重 |
-| `_config.yml` `paginate` | `1`（每页 1 篇） | `5` |
+| `_config.yml` `paginate` | `1`（每页 1 篇） | 先改 `5`，后在分组索引改造中**移除**，首页不再分页 |
 
-**副作用提醒**：`paginate` 从 1 改成 5 后，原来的 `/blog/page2/` … `/blog/page23/` 会被重新编号，旧的深链接可能 404。
+**副作用提醒**：分页已取消，`/blog/pageN/` 形式的旧链接全部 404；文章 URL 不受主题目录调整影响。
 
 **仍需你决定**：站点正式名称/副标题是否就用 `lordtoSky`；是否启用评论（需要自己在 disqus.com 注册并填 shortname）。
 
@@ -414,19 +417,23 @@ git push origin main
 
 | # | 问题 | 位置 | 建议 |
 |---|---|---|---|
-| 1 | 空文章内容（已停止发布） | `_posts/2026-08-28-PCIE-FM-Retransmission.md` | 已设置 `published: false`；写完正文后再启用 |
-| 2 | 4 个文章文件缺 front matter（已修复） | `2026-08-15-DLL概述.md`、`2026-08-15-DLL概述-LAPTOP-TENF55MD.md`、`2026-08-28-PCIE-FM-Retransmission.md`、`体系结构/2026-11-16-体系结构基础知识.md` | 已补 `layout` / `title` / `date` / `tags` |
+| 1 | 空文章内容（已停止发布） | `_posts/PCIe/2026-08-28-PCIE-FM-Retransmission.md` | 已设置 `published: false`；写完正文后再启用 |
+| 2 | 4 个文章文件缺 front matter（已修复） | `_posts/PCIe/2026-08-15-DLL概述.md`、`_posts/PCIe/2026-08-15-DLL概述-LAPTOP-TENF55MD.md`、`_posts/PCIe/2026-08-28-PCIE-FM-Retransmission.md`、`_posts/体系结构/2026-11-16-体系结构基础知识.md` | 已补 `layout` / `title` / `date` / `tags` |
 | 3 | 3 个 `.md` 无日期前缀，永远不会发布 | `_posts/rtl优化/*.md`、`_posts/axi2chi_orderbuffer/设计思路.md` | 要发布就重命名为 `YYYY-MM-DD-xxx.md` 并加 front matter；否则移入 `_drafts/` |
-| 4 | 同题双份文件 | `2026-08-15-DLL概述.md` 与 `2026-08-15-DLL概述-LAPTOP-TENF55MD.md` | 保留主版本，另一份合并或加 `published: false` 隐藏 |
+| 4 | 同题双份文件 | `_posts/PCIe/2026-08-15-DLL概述.md` 与 `_posts/PCIe/2026-08-15-DLL概述-LAPTOP-TENF55MD.md` | 保留主版本，另一份合并或加 `published: false` 隐藏 |
 | 5 | 仓库体积偏大 | `_posts/PCIe_7.0_NFM_…_v3.pptx`（13 MB）、`assets/diagrams/*.html`（单文件上万行） | 大文件可移到外部网盘/对象存储，正文给链接 |
 | 6 | 没有统计 | `_includes/head.html` | 可选接入 Plausible/Umami（轻量）或 GA4 |
-| 7 | 修改分页参数后的旧链接 | `/blog/page2/` … `/blog/page23/` 会重新编号 | 若有外部引用，考虑接受 404 或自行加跳转说明 |
+| 7 | 旧的 `/blog/pageN/` 链接 | 分页已取消 | 接受 404，或以后加跳转页面 |
 
 ### 6.6 修复状态与后续优先级
 
 **2026-11-27 已完成**：域名、搜索、评论归属、页脚/导航、站点标题、`exclude` 收口、首页分页、`_site` 停止跟踪、SEO meta、自定义 404、sitemap 过滤，并已推送上线。
 
-**推送后线上验证**：Pages 构建成功；`/archive/` 出现 2026-11-05 文章；首页每页 5 篇（Page 1 of 5）；`/sitemap.txt` 共 32 条（8 个页面 + 24 篇文章）且域名均为 `https://lordtosky.github.io`；文章页无 Disqus 脚本；`/CHANGELOG/`、`/Gemfile`、`/tmp/*` 等已 404。
+**2026-11-28 已完成**：文章按主题目录归档（SystemVerilog / PCIe / 体系结构 / RTL / HDMI / 算法 / 随笔 / 其他），首页改为按目录分组的索引并取消分页。
+
+**推送后线上验证**：Pages 构建成功；`/archive/` 出现 2026-11-05 文章；`/sitemap.txt` 共 32 条（8 个页面 + 24 篇文章）且域名均为 `https://lordtosky.github.io`；文章页无 Disqus 脚本；`/CHANGELOG/`、`/Gemfile`、`/tmp/*` 等已 404。
+
+**2026-11-28 验证**：Pages 构建成功；首页按 8 个主题分组列出 25 篇文章；`/sitemap.txt` 29 条（4 个页面 + 25 篇文章）；抽查文章 URL 未变；`/blog/page2/` 已 404。
 
 后续：
 
@@ -507,7 +514,7 @@ git push origin main
 |---|---|---|
 | 站点标题 / 副标题 / 作者 | `_config.yml:27–32` | 影响 `<title>`、RSS、归档页 |
 | 站点域名 | `_config.yml:42` `production_url` | 影响 sitemap、feed |
-| 每页文章数 | `_config.yml:4` `paginate` | 改后分页页数变化 |
+| 首页分组 | `index.html` 顶部的 `sections` 列表 | 每项为 `目录名|显示名`；新增主题目录时在这里补一行 |
 | 不发布的文件 | `_config.yml:7–21` `exclude` | 大小写敏感，按实际文件名写 |
 | 评论开关/服务 | `_config.yml:96–101` | `provider: false` 关闭 |
 | 页头打字机文案 | `_layouts/default.html:12` `data-type` 数组 | 中文可用，注意 JSON 双引号转义 |
@@ -534,7 +541,7 @@ git push origin main
 | 新文章 404 | 文件名没有 `YYYY-MM-DD-` 前缀；文件在 `_posts` 之外；文件名大小写与链接不一致 | 重命名到 `_posts/` 根或带日期前缀的子目录 |
 | 页面能开但没样式/标题怪 | 缺 front matter → 用文件名当标题；`layout` 写错 | 补 front matter，`layout: post` |
 | 图片不显示 | 路径写错；误用相对路径；文件在 `tmp/` | 统一 `/assets/images/...` 绝对路径 |
-| 首页每页文章数不对 | `paginate` 设置 | 改 `_config.yml:4` 的 `paginate`（当前 5） |
+| 首页分组不对 / 某目录文章不显示 | `index.html` 的 `sections` 没包含该目录 | 在列表里补 `目录名|显示名` |
 | 评论跑到别人站点 | Disqus shortname 曾是 `nagekar`（现已关闭评论） | 启用前先在 disqus.com 注册并填自己的 shortname |
 | 站内搜索跳到错误站点 | `custom.js` 的 `site:` 域名 | 改为 `site:lordtosky.github.io` |
 | 中文乱码 | 文件不是 UTF-8（或带 BOM） | 用 UTF-8 无 BOM 保存；不要用 GBK 另存 |

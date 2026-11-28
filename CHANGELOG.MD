@@ -28,6 +28,14 @@
 
 ---
 
+## 2026-11-28 · 文章按主题目录归档，首页改为分组索引
+
+- 内容：把 `_posts/` 根目录下的文章按主题移入子目录：`PCIe/`、`RTL/`、`HDMI/`、`体系结构/`、`算法/`、`随笔/`、`其他/`；同时把 `SystemVerolog/` 更正为 `SystemVerilog/`。目录名不会进入 URL，文章链接保持不变。
+- 内容：重写 `index.html`：首页从“每页 5 篇的分页列表”改为按主题目录分组的索引（分组名、篇数、日期 + 标题 + 摘要），并移除 `_config.yml` 的 `paginate` / `paginate_path`；`/blog/pageN/` 旧链接全部 404。
+- 文件：`index.html`、`_config.yml`、`_posts/*/`（约 24 篇文章移动）、`README.md`、`CHANGELOG.MD`
+- 验证：推送后检查首页 8 个分组与篇数、文章 URL 未变、`/sitemap.txt` 为 4 个页面 + 25 篇文章、`/blog/page2/` 为 404。
+- 提交：本次推送
+
 ## 2026-11-28 · 新增文章：SystemVerilog function 与 task
 
 - 内容：把空白草稿写成《SystemVerilog 中的 function 与 task》：从返回值、时间控制、调用关系、`automatic` / `static` 四方面对比两者，给出模块与 UVM 类中的写法示例、常见坑和小结表；去掉 `published: false` 正式发布。
