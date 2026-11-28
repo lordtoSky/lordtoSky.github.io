@@ -11,7 +11,7 @@
 | 构建方式 | GitHub Pages「Deploy from a branch」→ `main` / 根目录，使用 Jekyll 3.9（safe mode）自动构建 |
 | 主题 | [Soot Spirits](https://sootspirits.github.io)（Jekyll 主题 + Bulma CSS）+ 本地定制 |
 | 站点标题 | `lordtoSky`（`_config.yml` 的 `title`），副标题 `PCIe · RTL · 体系结构 · 随笔` |
-| 文章规模 | 工作区 25 个带日期前缀的文章文件；本次推送后线上 24 篇 |
+| 文章规模 | 工作区 26 个带日期前缀的文章文件（其中 1 篇空文章 `published: false`）；线上 24 篇 |
 | 首页分页 | 每页 5 篇（`_config.yml` 中 `paginate: 5`，24 篇约 5 页） |
 | 评论 | 已关闭（`provider: false`）；要启用就在 `_config.yml` 填自己在 disqus.com 的 shortname |
 | 搜索 | 页头搜索走 Google `site:lordtosky.github.io` |
@@ -414,8 +414,8 @@ git push origin main
 
 | # | 问题 | 位置 | 建议 |
 |---|---|---|---|
-| 1 | 空文章页面 | `_posts/2026-08-28-PCIE-FM-Retransmission.md`（0 字节） | 补内容或删除（删除前确认没有外链引用） |
-| 2 | 4 个文章文件没有 front matter（靠文件名推断标题） | `2026-08-15-DLL概述.md`、`2026-08-15-DLL概述-LAPTOP-TENF55MD.md`、`2026-08-28-PCIE-FM-Retransmission.md`、`体系结构/2026-11-16-体系结构基础知识.md` | 补齐 front matter（至少 `layout` / `title` / `date` / `tags`） |
+| 1 | 空文章内容（已停止发布） | `_posts/2026-08-28-PCIE-FM-Retransmission.md` | 已设置 `published: false`；写完正文后再启用 |
+| 2 | 4 个文章文件缺 front matter（已修复） | `2026-08-15-DLL概述.md`、`2026-08-15-DLL概述-LAPTOP-TENF55MD.md`、`2026-08-28-PCIE-FM-Retransmission.md`、`体系结构/2026-11-16-体系结构基础知识.md` | 已补 `layout` / `title` / `date` / `tags` |
 | 3 | 3 个 `.md` 无日期前缀，永远不会发布 | `_posts/rtl优化/*.md`、`_posts/axi2chi_orderbuffer/设计思路.md` | 要发布就重命名为 `YYYY-MM-DD-xxx.md` 并加 front matter；否则移入 `_drafts/` |
 | 4 | 同题双份文件 | `2026-08-15-DLL概述.md` 与 `2026-08-15-DLL概述-LAPTOP-TENF55MD.md` | 保留主版本，另一份合并或加 `published: false` 隐藏 |
 | 5 | 仓库体积偏大 | `_posts/PCIe_7.0_NFM_…_v3.pptx`（13 MB）、`assets/diagrams/*.html`（单文件上万行） | 大文件可移到外部网盘/对象存储，正文给链接 |
@@ -430,7 +430,7 @@ git push origin main
 
 后续：
 
-1. **P1**：补齐空文章与 4 个缺 front matter 的文件（见 6.5 #1、#2）；
+1. **P1**：补齐空文章正文后再启用发布（见 6.5 #1）；
 2. **P1**：处理 3 个无日期草稿与同题双份文件（见 6.5 #3、#4）；
 3. **P2**：接入统计（见 6.5 #6）；
 4. **P2**：决定是否启用评论、是否使用自定义域名；

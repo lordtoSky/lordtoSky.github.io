@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "RTL 状态机重构：状态转移与寄存器所有权分离"
-date: "2026-11-05 16:00:00"
+date: "2026-11-05 16:00:00 +0800"
 description: "以 HDMI Link Manager 为例，说明适合综合、便于时序检查的 SystemVerilog 控制器编码风格。"
 tags: [SystemVerilog, RTL, FSM, FPGA, HDMI, Coding-Style]
 ---

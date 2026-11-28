@@ -1,3 +1,10 @@
+---
+layout: post
+title: "PCIe 数据链路层（DLL）概述（备份）"
+date: 2026-08-15
+tags: [PCIe, DLL, Data Link Layer]
+---
+
 # DLL
 
 DLL（Data Link Layer，数据链路层）位于事务层（Transaction Layer）和物理层（Physical Layer）之间，是 PCIe 分层架构中负责可靠链路传输的一层。它不关心事务请求的具体语义，也不直接处理电气信号，而是将事务层产生的 TLP（Transaction Layer Packet）可靠地交付给对端的数据链路层。

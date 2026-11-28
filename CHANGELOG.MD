@@ -28,6 +28,12 @@
 
 ---
 
+## 2026-11-28 · 新增文章：SystemVerilog virtual
+
+- 内容：新增《SystemVerilog 中的 virtual：虚方法、虚类与虚接口》，区分 `virtual function` / `virtual class` / `virtual interface` 三种用法，说明动态派发、抽象基类契约与 DUT 接口引用的适用场景；补充小结表格，统一代码块与表格排版，删除“固定地址表”式的实现描述。
+- 文件：`_posts/2026-11-28-SystemVerilog-virtual.md`（由 `_posts/SystemVerolog/virtual.md` 改名、补 front matter 并排版）、`CHANGELOG.MD`。
+- 验证：front matter 通过 YAML 解析；代码片段按 SystemVerilog/UVM 语义核对；推送后验证 `/2026/11/28/SystemVerilog-virtual/` 与 `/archive/`。
+
 ## 2026-11-27 · 修复自定义 404 与上线验证
 
 - 内容：`404.html` 增加 `permalink: /404.html`。此前 `permalink: pretty` 把它输出成 `/404/`，GitHub Pages 找不到根目录的 `404.html`，线上缺失页面显示的是 GitHub 默认 404，而不是本站自定义页。
@@ -40,7 +46,7 @@
 ## 2026-11-27 · 修复文章元数据与时间
 
 - 内容：为两篇 DLL 文章和体系结构文章补齐 `layout`、`title`、`date`、`tags`；为空的 Flit Mode 重传文章补元数据并设置 `published: false`，避免生成空页面；将 RTL 状态机文章的 16:00 标明为北京时间 `+0800`。
-- 文件：`_posts/2026-08-15-DLL概述.md`、`_posts/2026-08-15-DLL概述-LAPTOP-TENF55MD.md`、`_posts/2026-08-28-PCIE-FM-Retransmission.md`、`_posts/体系结构/2026-11-16-体系结构基础知识.md`、`_posts/2026-11-05-RTL-FSM-Register-Ownership-Style.md`、`CHANGELOG.MD`。
+- 文件：`_posts/2026-08-15-DLL概述.md`、`_posts/2026-08-15-DLL概述-LAPTOP-TENF55MD.md`、`_posts/2026-08-28-PCIE-FM-Retransmission.md`、`_posts/体系结构/2026-11-16-体系结构基础知识.md`、`_posts/2026-11-05-RTL-FSM-Register-Ownership-Style.md`、`README.md`、`CHANGELOG.MD`。
 - 验证：检查文章开头元数据、日期与文件名一致性及 `git diff --check`；本机未安装 Ruby/Bundler，未运行 Jekyll 构建。
 
 ## 2026-11-27 · 补充修复：sitemap 过滤与残留样式
