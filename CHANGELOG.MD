@@ -28,6 +28,14 @@
 
 ---
 
+## 2026-11-28 · 发布剩余笔记（AXI / 体系结构）
+
+- 内容：把 3 篇没有日期前缀的草稿补 front matter、移入 `_posts/AXI/` 并发布：《AXI 通道握手完成判断》《Clocking Wizard 动态时钟的 AXI 重配置》《AXI2CHI Order Buffer 设计思路》；同时发布 `_posts/体系结构/2026-11-16-体系结构基础知识.md`。
+- 内容：首页索引新增「AXI 与总线」分组；`_layouts/default.html` 的页头打字文案改为「学习使我快乐」。
+- 文件：`_posts/AXI/*`、`_posts/体系结构/2026-11-16-体系结构基础知识.md`、`index.html`、`_layouts/default.html`、`README.md`、`CHANGELOG.MD`
+- 验证：front matter 通过 YAML 解析；推送后检查首页 9 个分组 / 29 篇、新文章 URL、`/sitemap.txt` 33 条。
+- 提交：本次推送
+
 ## 2026-11-28 · 文章按主题目录归档，首页改为分组索引
 
 - 内容：把 `_posts/` 根目录下的文章按主题移入子目录：`PCIe/`、`RTL/`、`HDMI/`、`体系结构/`、`算法/`、`随笔/`、`其他/`；同时把 `SystemVerolog/` 更正为 `SystemVerilog/`。目录名不会进入 URL，文章链接保持不变。

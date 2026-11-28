@@ -11,7 +11,7 @@
 | 构建方式 | GitHub Pages「Deploy from a branch」→ `main` / 根目录，使用 Jekyll 3.9（safe mode）自动构建 |
 | 主题 | [Soot Spirits](https://sootspirits.github.io)（Jekyll 主题 + Bulma CSS）+ 本地定制 |
 | 站点标题 | `lordtoSky`（`_config.yml` 的 `title`），副标题 `PCIe · RTL · 体系结构 · 随笔` |
-| 文章规模 | 工作区 27 个带日期前缀的文章文件（含 1 篇空文章 `published: false`、1 篇未跟踪）；线上 25 篇 |
+| 文章规模 | 工作区 30 个带日期前缀的文章文件（含 1 篇空文章 `published: false`）；线上 29 篇 |
 | 首页 | 按主题目录分组的文章索引（不分页；`_config.yml` 已移除 `paginate`） |
 | 评论 | 已关闭（`provider: false`）；要启用就在 `_config.yml` 填自己在 disqus.com 的 shortname |
 | 搜索 | 页头搜索走 Google `site:lordtosky.github.io` |
@@ -81,7 +81,7 @@ git push origin main
 D:\onedrive\block\
 ├─ _posts\                 # 文章源文件（唯一内容入口）
 │  ├─ SystemVerilog\        # 首页按这些主题目录分组
-│  ├─ PCIe\  RTL\  HDMI\ 体系结构\ 算法\ 随笔\ 其他\
+│  ├─ PCIe\  AXI\  RTL\  HDMI\ 体系结构\ 算法\ 随笔\ 其他\
 │  └─ rtl优化\ axi2chi_orderbuffer\   # 未发布的草稿目录
 ├─ _drafts\                # 草稿目录（当前不存在）
 ├─ _layouts\               # default / page / post 三套布局
@@ -129,7 +129,7 @@ D:\onedrive\block\
 
 - **`_posts` 会递归读取**：`_posts/子目录/2026-11-14-xxx.md` 会被当作文章，但文件名仍必须带日期前缀。
 - **目录决定首页分组**：首页索引按 `_posts/` 下的主题目录（SystemVerilog / PCIe / 体系结构 / RTL / HDMI / 算法 / 随笔 / 其他）分组展示；目录名**不会**进入 URL，把文章移到别的主题目录不会改变链接。
-- **没有日期前缀 = 完全不读取**：例如 `_posts/rtl优化/动态时钟axi配置.md` 目前不会成为文章。
+- **没有日期前缀 = 完全不读取**：例如随手放进 `_posts/` 的 `foo.md` 不会成为文章，必须先改成 `YYYY-MM-DD-xxx.md` 命名。
 - **带日期但没有 front matter 也会发布**：Jekyll 会用文件名推断标题/日期（例如线上曾出现的 `_posts/PCIe/2026-08-28-PCIE-FM-Retransmission.md` 空文件）。这种“裸文章”无法设置 tags/description，不要这样写。
 - **文件名决定 URL 的一部分**（`permalink: pretty`）：`/年/月/日/文件名去掉日期前缀/`。改文件名或改 `date` 都会改 URL，旧链接会 404。
 
@@ -376,13 +376,10 @@ git push origin main
 
 **结论**：不是构建失败，也不是文件丢失，而是“未来日期 + 没有后续构建”。**处理**：本次推送（2026-11-27）会触发新构建，该日期已过去，文章会自动补发，不需要改文件；以后写作时别把 `date` 写成当天晚些的时间即可（要显式写时用 `2026-11-27 10:00:00 +0800`）。
 
-### 6.2 工作区状态（2026-11-27）
+### 6.2 工作区状态（2026-11-28）
 
-| 状态 | 文件 | 说明 |
-|---|---|---|
-| 已推送 | `561135f` `20a120f` `3377514` | 修改 HDMI 日志；新增 AXI 握手/动态时钟笔记 |
-| 仍为本地修改 | `_posts/rtl优化/动态时钟axi配置.md` | 内容改动（该文件无日期前缀，本就不会发布） |
-| 仍未跟踪 | `_posts/体系结构/2026-11-16-体系结构基础知识.md` | 已补 front matter；提交后会作为「体系结构」文章发布 |
+- 工作区已无未提交的文章改动：AXI 通道握手、动态时钟 AXI 配置、AXI2CHI Order Buffer、体系结构基础四篇均已发布。
+- `_layouts/default.html` 的页头打字文案也已提交（当前为「学习使我快乐」）。
 
 ### 6.3 `_site/` 误提交（已修正）
 
@@ -419,29 +416,28 @@ git push origin main
 |---|---|---|---|
 | 1 | 空文章内容（已停止发布） | `_posts/PCIe/2026-08-28-PCIE-FM-Retransmission.md` | 已设置 `published: false`；写完正文后再启用 |
 | 2 | 4 个文章文件缺 front matter（已修复） | `_posts/PCIe/2026-08-15-DLL概述.md`、`_posts/PCIe/2026-08-15-DLL概述-LAPTOP-TENF55MD.md`、`_posts/PCIe/2026-08-28-PCIE-FM-Retransmission.md`、`_posts/体系结构/2026-11-16-体系结构基础知识.md` | 已补 `layout` / `title` / `date` / `tags` |
-| 3 | 3 个 `.md` 无日期前缀，永远不会发布 | `_posts/rtl优化/*.md`、`_posts/axi2chi_orderbuffer/设计思路.md` | 要发布就重命名为 `YYYY-MM-DD-xxx.md` 并加 front matter；否则移入 `_drafts/` |
-| 4 | 同题双份文件 | `_posts/PCIe/2026-08-15-DLL概述.md` 与 `_posts/PCIe/2026-08-15-DLL概述-LAPTOP-TENF55MD.md` | 保留主版本，另一份合并或加 `published: false` 隐藏 |
-| 5 | 仓库体积偏大 | `_posts/PCIe_7.0_NFM_…_v3.pptx`（13 MB）、`assets/diagrams/*.html`（单文件上万行） | 大文件可移到外部网盘/对象存储，正文给链接 |
-| 6 | 没有统计 | `_includes/head.html` | 可选接入 Plausible/Umami（轻量）或 GA4 |
-| 7 | 旧的 `/blog/pageN/` 链接 | 分页已取消 | 接受 404，或以后加跳转页面 |
+| 3 | 同题双份文件 | `_posts/PCIe/2026-08-15-DLL概述.md` 与 `_posts/PCIe/2026-08-15-DLL概述-LAPTOP-TENF55MD.md` | 保留主版本，另一份合并或加 `published: false` 隐藏 |
+| 4 | 仓库体积偏大 | `_posts/PCIe_7.0_NFM_…_v3.pptx`（13 MB）、`assets/diagrams/*.html`（单文件上万行） | 大文件可移到外部网盘/对象存储，正文给链接 |
+| 5 | 没有统计 | `_includes/head.html` | 可选接入 Plausible/Umami（轻量）或 GA4 |
+| 6 | 旧的 `/blog/pageN/` 链接 | 分页已取消 | 接受 404，或以后加跳转页面 |
 
 ### 6.6 修复状态与后续优先级
 
 **2026-11-27 已完成**：域名、搜索、评论归属、页脚/导航、站点标题、`exclude` 收口、首页分页、`_site` 停止跟踪、SEO meta、自定义 404、sitemap 过滤，并已推送上线。
 
-**2026-11-28 已完成**：文章按主题目录归档（SystemVerilog / PCIe / 体系结构 / RTL / HDMI / 算法 / 随笔 / 其他），首页改为按目录分组的索引并取消分页。
+**2026-11-28 已完成**：文章按主题目录归档（SystemVerilog / PCIe / AXI / 体系结构 / RTL / HDMI / 算法 / 随笔 / 其他），首页改为按目录分组的索引并取消分页；AXI 握手、动态时钟 AXI 配置、AXI2CHI Order Buffer、体系结构基础四篇补齐日期与 front matter 后发布。
 
 **推送后线上验证**：Pages 构建成功；`/archive/` 出现 2026-11-05 文章；`/sitemap.txt` 共 32 条（8 个页面 + 24 篇文章）且域名均为 `https://lordtosky.github.io`；文章页无 Disqus 脚本；`/CHANGELOG/`、`/Gemfile`、`/tmp/*` 等已 404。
 
-**2026-11-28 验证**：Pages 构建成功；首页按 8 个主题分组列出 25 篇文章；`/sitemap.txt` 29 条（4 个页面 + 25 篇文章）；抽查文章 URL 未变；`/blog/page2/` 已 404。
+**2026-11-28 验证**：Pages 构建成功；首页按 9 个主题分组列出 29 篇文章；`/sitemap.txt` 33 条（4 个页面 + 29 篇文章）；抽查文章 URL 未变；`/blog/page2/` 已 404。
 
 后续：
 
 1. **P1**：补齐空文章正文后再启用发布（见 6.5 #1）；
-2. **P1**：处理 3 个无日期草稿与同题双份文件（见 6.5 #3、#4）；
-3. **P2**：接入统计（见 6.5 #6）；
+2. **P1**：处理同题双份文件（见 6.5 #3）；
+3. **P2**：接入统计（见 6.5 #5）；
 4. **P2**：决定是否启用评论、是否使用自定义域名；
-5. **P2**：压缩 / 外链大体积 PPTX 与 diagram HTML（见 6.5 #5）。
+5. **P2**：压缩 / 外链大体积 PPTX 与 diagram HTML（见 6.5 #4）。
 
 ---
 
