@@ -11,7 +11,7 @@
 | 构建方式 | GitHub Pages「Deploy from a branch」→ `main` / 根目录，使用 Jekyll 3.9（safe mode）自动构建 |
 | 主题 | [Soot Spirits](https://sootspirits.github.io)（Jekyll 主题 + Bulma CSS）+ 本地定制 |
 | 站点标题 | `lordtoSky`（`_config.yml` 的 `title`），副标题 `PCIe · RTL · 体系结构 · 随笔` |
-| 文章规模 | 工作区 26 个带日期前缀的文章文件（其中 1 篇空文章 `published: false`）；线上 24 篇 |
+| 文章规模 | 工作区 27 个带日期前缀的文章文件（含 1 篇空文章 `published: false`、1 篇未跟踪）；线上 25 篇 |
 | 首页分页 | 每页 5 篇（`_config.yml` 中 `paginate: 5`，24 篇约 5 页） |
 | 评论 | 已关闭（`provider: false`）；要启用就在 `_config.yml` 填自己在 disqus.com 的 shortname |
 | 搜索 | 页头搜索走 Google `site:lordtosky.github.io` |

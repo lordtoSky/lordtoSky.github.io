@@ -28,10 +28,16 @@
 
 ---
 
+## 2026-11-28 · 新增文章：SystemVerilog function 与 task
+
+- 内容：把空白草稿写成《SystemVerilog 中的 function 与 task》：从返回值、时间控制、调用关系、`automatic` / `static` 四方面对比两者，给出模块与 UVM 类中的写法示例、常见坑和小结表；去掉 `published: false` 正式发布。
+- 文件：`_posts/SystemVerolog/2026-11-28-SystemVerilog-function-and-task.md`、`CHANGELOG.MD`。
+- 验证：front matter 通过 YAML 解析；推送后验证 `/2026/11/28/SystemVerilog-function-and-task/`、`/archive/` 与 `/sitemap.txt`。
+
 ## 2026-11-28 · 新增文章：SystemVerilog virtual
 
 - 内容：新增《SystemVerilog 中的 virtual：虚方法、虚类与虚接口》，区分 `virtual function` / `virtual class` / `virtual interface` 三种用法，说明动态派发、抽象基类契约与 DUT 接口引用的适用场景；补充小结表格，统一代码块与表格排版，删除“固定地址表”式的实现描述。
-- 文件：`_posts/2026-11-28-SystemVerilog-virtual.md`（由 `_posts/SystemVerolog/virtual.md` 改名、补 front matter 并排版）、`CHANGELOG.MD`。
+- 文件：`_posts/SystemVerolog/2026-11-28-SystemVerilog-virtual.md`（由根目录 `_posts/` 移入 `SystemVerolog/` 子目录，文件名不变，URL 不变）、`CHANGELOG.MD`。
 - 验证：front matter 通过 YAML 解析；代码片段按 SystemVerilog/UVM 语义核对；推送后验证 `/2026/11/28/SystemVerilog-virtual/` 与 `/archive/`。
 
 ## 2026-11-27 · 修复自定义 404 与上线验证
